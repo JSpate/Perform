@@ -1,0 +1,91 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Perform.Core\Perform.Core.csproj" />
+    <ProjectReference Include="..\Perform.DMX\Perform.DMX.csproj" />
+    <ProjectReference Include="..\Perform.OSC\Perform.OSC.csproj" />
+    <ProjectReference Include="..\Perform.Reaper\Perform.Reaper.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="config\consoles\reaper.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="config\devices.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="config\dmxDevices\movingHead.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="config\buttons.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="config\songs\Song 2.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="config\songs\Song 1.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="sequence.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="config\songs\Death Come Riding.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="config\shows\show.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\james\.nuget\packages\rtmidi.core\1.0.51\build\rtmidi.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\james\.nuget\packages\rtmidi.core\1.0.51\build\rtmidi32.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\james\.nuget\packages\rtmidi.core\1.0.51\build\librtmidi.dylib" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\james\.nuget\packages\rtmidi.core\1.0.51\build\rtmidi.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\james\.nuget\packages\rtmidi.core\1.0.51\build\rtmidi32.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\james\.nuget\packages\rtmidi.core\1.0.51\build\librtmidi.dylib" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\james\.nuget\packages\rtmidi.core\1.0.51\build\librtmidi.dylib" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\james\.nuget\packages\rtmidi.core\1.0.51\build\rtmidi.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\james\.nuget\packages\rtmidi.core\1.0.51\build\librtmidi.dylib" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\james\.nuget\packages\rtmidi.core\1.0.51\build\librtmidi.dylib" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\james\.nuget\packages\rtmidi.core\1.0.51\build\rtmidi32.dll" />
+  </ItemGroup>
+
+</Project>

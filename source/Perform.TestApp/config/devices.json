@@ -1,0 +1,10 @@
+{
+  "SpotLeft": {
+    "type": "movingHead",
+    "addressOffset": 0
+  },
+  "SpotRight": {
+    "type": "movingHead",
+    "addressOffset": 14
+  }
+}

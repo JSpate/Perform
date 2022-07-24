@@ -1,0 +1,62 @@
+{
+  "consoles": [
+    "reaper"
+  ],
+  "dmxPort": "COM3",
+  "lightPositions": [ "person1", "person2" ],
+  "triggers": {
+    "guitar1": {
+      "type": "reaper",
+      "trackId": 1,
+      "minLevel": 50
+    },
+    "guitar2": {
+      "type": "reaper",
+      "trackId": 3,
+      "minLevel": 50
+    },
+    "piano": {
+      "type": "reaper",
+      "trackId": 4,
+      "minLevel": 20
+    },
+    "drum": {
+      "type": "reaper",
+      "trackId": 5,
+      "minLevel": 20
+    }
+  },
+  "sequences": {
+    "test": [
+      { "midiNote": [ 1, 0, 255 ] },
+      { "setLight": [ "floor1", "W=255", "W=0", 0, 50 ] },
+      { "delay": [ 25 ] },
+      { "setLight": [ "floor2", "W=64", "W=0", 0, 200 ] }
+    ]
+  },
+  "chases": {
+    "lights2": [
+      {
+        "name": "spotLeft",
+        "color": {
+          "trigger": "guitar1",
+          "R": [ 50, 150 ],
+          "G": [ 25, 75 ]
+        }
+      },
+      {
+        "name": "spotRight",
+        "color": {
+          "trigger": "guitar2",
+          "R": [ 50, 150 ],
+          "G": [ 25, 75 ]
+        }
+      }
+    ]
+  },
+  "songs": [
+    "Death Come Riding",
+    "Song 1",
+    "Song 2"
+  ]
+}

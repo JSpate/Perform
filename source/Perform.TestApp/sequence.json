@@ -1,0 +1,12 @@
+[
+  { "midiNote": [ 1, 0, 255 ] },
+  { "setLight": [ "floor1", "R=255, B=128" ] },
+  { "delay": [ 10 ] },
+  { "setLight": [ "floor1", "W=32" ] },
+  { "delay": [ 10 ] },
+  { "midiCC": [ 15, 0, 255 ] },
+  { "volumeChange": [ 1, -10 ] },
+  { "setFxPreset": [ 1, 1, "Steve Guitar" ] },
+  { "unmute": [ 2 ] },
+  { "mute": [ 3 ] }
+]

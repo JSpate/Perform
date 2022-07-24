@@ -1,0 +1,10 @@
+{
+  "name": "Reaper DAW",
+  "type": "Perform.Reaper.Reaper, Perform.Reaper, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
+  "configType": "Perform.Model.OscConfig, Perform.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
+  "config": {
+    "ipAddress": "127.0.0.1",
+    "sendPort": 8000,
+    "receivePort": 8001
+  }
+}

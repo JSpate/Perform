@@ -26,6 +26,8 @@ The initial commit allows control of Reaper (DAW) https://www.reaper.fm/ via Ope
 
 Using the Reaper model we have now used Perform live to control Guitar sound! (Yay!))
 
+See the [ShowScript.md](ShowScript.md) for the language documentation.
+
 ### ** Example: show script **
 <pre>
 bool isSongActive = false;

@@ -18,6 +18,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Solution Items", "_Solution Items", "{75D6D674-DACC-42E3-820C-A7FD19B8BA03}"
 	ProjectSection(SolutionItems) = preProject
 		..\README.md = ..\README.md
+		ShowScript.md = ShowScript.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perform.Web", "Perform.Web\Perform.Web.csproj", "{7E404F1F-EF3D-484D-9B23-0FB94435FD0A}"

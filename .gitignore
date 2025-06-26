@@ -6,3 +6,5 @@
 /source/*/obj
 /source/*/bin
 .vs
+/tests/Perform.Script.UnitTests/obj/x64/Debug/net8.0/Perform.Script.UnitTests.AssemblyInfo.cs
+/tests/Perform.Script.UnitTests/obj/x64/Debug/net8.0/Perform.Script.UnitTests.AssemblyInfoInputs.cache

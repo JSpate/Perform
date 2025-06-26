@@ -8,3 +8,15 @@
 .vs
 /tests/Perform.Script.UnitTests/obj/x64/Debug/net8.0/Perform.Script.UnitTests.AssemblyInfo.cs
 /tests/Perform.Script.UnitTests/obj/x64/Debug/net8.0/Perform.Script.UnitTests.AssemblyInfoInputs.cache
+/tests/Perform.Script.UnitTests/bin/x64/Debug/net8.0/Perform.Core.dll
+/tests/Perform.Script.UnitTests/bin/x64/Debug/net8.0/Perform.Core.pdb
+/tests/Perform.Script.UnitTests/bin/x64/Debug/net8.0/Perform.Script.dll
+/tests/Perform.Script.UnitTests/bin/x64/Debug/net8.0/Perform.Script.pdb
+/tests/Perform.Script.UnitTests/bin/x64/Debug/net8.0/Perform.Script.UnitTests.dll
+/tests/Perform.Script.UnitTests/bin/x64/Debug/net8.0/Perform.Script.UnitTests.pdb
+/tests/Perform.Script.UnitTests/obj/x64/Debug/net8.0/ref/Perform.Script.UnitTests.dll
+/tests/Perform.Script.UnitTests/obj/x64/Debug/net8.0/refint/Perform.Script.UnitTests.dll
+/tests/Perform.Script.UnitTests/obj/x64/Debug/net8.0/Perform.Script.UnitTests.csproj.AssemblyReference.cache
+/tests/Perform.Script.UnitTests/obj/x64/Debug/net8.0/Perform.Script.UnitTests.dll
+/tests/Perform.Script.UnitTests/obj/x64/Debug/net8.0/Perform.Script.UnitTests.pdb
+/tests/Perform.Script.UnitTests/obj/x64/Debug/net8.0/Perform.Script.UnitTests.sourcelink.json

@@ -22,17 +22,19 @@ public class GeneratedShowScript
     public void Initialise()
     {
         _showScript.AddEventHandler(typeof(EventHandler0001), EventType.StartSong);
+        _showScript.AddEventHandler(typeof(EventHandler0002), EventType.EndSong);
     }
 
     public void Finalize() {
         _showScript.RemoveEventHandler(typeof(EventHandler0001), EventType.StartSong);
+        _showScript.RemoveEventHandler(typeof(EventHandler0002), EventType.EndSong);
     }
     
     private class EventHandler0001 : IScriptEventHandler
     {
         private readonly ShowScript _showScript;
         private readonly ILogger _logger;
-        private IDeviceScriptFunction _function0001;
+    
         private ScriptLoopStatus _status = ScriptLoopStatus.Continue;
     
         public EventHandler0001(ShowScript showScript, ILogger logger)
@@ -43,18 +45,47 @@ public class GeneratedShowScript
     
         public void Initialize()
         {
-            _logger.LogInformation("Hello") ;
-            Math.Sin(3.14) ;
-            Color.RGB(255,0,0) ;
-            _showScript.Get<IDeviceItem>("DMX.Light1") ;
-            _showScript.IsAvailable("DMX.Light1") ;
-        _function0001 = new Perform.Scripting.Functions.Set(255,0,0,0);
-        _function0001.Initialize(_showScript, ["DMX.Light1"]);
+            var started = true;
+    
         }
     
         public void Loop()
         {
-            if (!_function0001.IsFinished) _function0001.Loop();
+            _logger.LogInformation("Start loop") ;
+            _status = ScriptLoopStatus.EndLoop;
+            return;
+        }
+    
+    
+        public ScriptLoopStatus Status => _status;
+    
+    }
+    
+    
+    private class EventHandler0002 : IScriptEventHandler
+    {
+        private readonly ShowScript _showScript;
+        private readonly ILogger _logger;
+    
+        private ScriptLoopStatus _status = ScriptLoopStatus.Continue;
+    
+        public EventHandler0002(ShowScript showScript, ILogger logger)
+        {
+            _showScript = showScript;
+            _logger = logger;
+        }
+    
+        public void Initialize()
+        {
+            var ended = true;
+    
+        }
+    
+        public void Loop()
+        {
+            _logger.LogInformation("End loop") ;
+            _status = ScriptLoopStatus.EndLoop;
+            return;
         }
     
     

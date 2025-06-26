@@ -4,12 +4,21 @@ namespace Perform.Script;
 
 public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVisitor<string>
 {
-    private readonly List<string> _eventHandlerMethods = new();
+    private readonly List<string> _eventHandlerClasses = new();
     private readonly List<string> _eventHandlerRegistrations = new();
-    private bool _inFunctionOrHandler = false;
+    private bool _inFunctionOrHandler;
     private readonly List<string> _moduleConstants = new();
     private readonly List<string> _moduleVars = new();
-    private int _eventHandlerCounter = 0;
+    private int _eventHandlerCounter;
+
+    // Track loop nesting for context-sensitive continue
+    private int _loopNestingLevel;
+
+    // --- Function fields for Lites/Motion ---
+    private readonly List<string> _functionFields = new();
+    private readonly List<string> _functionInitializations = new();
+    private readonly List<string> _functionLoops = new();
+    private int _functionCounter;
 
     public override string VisitAdditiveExpr(ShowScriptParser.AdditiveExprContext context)
     {
@@ -20,6 +29,68 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
             left += $" {op} " + Visit(context.multiplicativeExpr(i));
         }
         return left;
+    }
+
+    public override string VisitIfLoopStatement(ShowScriptParser.IfLoopStatementContext context)
+    {
+        var cond = Visit(context.expr());
+        var thenBlock = Visit(context.loopStatementsBlock(0));
+        var sb = new StringBuilder();
+        sb.Append($"if ({cond}) {thenBlock}");
+
+        if (context.ELSE() != null)
+        {
+            if (context.ifLoopStatement() != null)
+            {
+                sb.Append(" else ");
+                sb.Append(Visit(context.ifLoopStatement()));
+            }
+            else if (context.loopStatementsBlock().Length > 1)
+            {
+                sb.Append(" else ");
+                sb.Append(Visit(context.loopStatementsBlock(1)));
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    public override string VisitForLoopStatement(ShowScriptParser.ForLoopStatementContext context)
+    {
+        var init = "";
+        if (context.letStatementNoSemi() != null && context.letStatementNoSemi().Length > 0)
+            init = Visit(context.letStatementNoSemi(0));
+        else if (context.assignmentNoSemi() != null && context.assignmentNoSemi().Length > 0)
+            init = Visit(context.assignmentNoSemi(0));
+        else if (context.varDeclNoSemi() != null && context.varDeclNoSemi().Length > 0)
+            init = Visit(context.varDeclNoSemi(0));
+
+        var cond = context.expr() != null && context.expr().Length > 0 ? Visit(context.expr(0)) : "";
+
+        string inc = "";
+        if (context.letStatementNoSemi() != null && context.letStatementNoSemi().Length > 1)
+            inc = Visit(context.letStatementNoSemi(1));
+        else if (context.assignmentNoSemi() != null && context.assignmentNoSemi().Length > 1)
+            inc = Visit(context.assignmentNoSemi(1));
+        else if (context.varDeclNoSemi() != null && context.varDeclNoSemi().Length > 1)
+            inc = Visit(context.varDeclNoSemi(1));
+        else if (context.expr() != null && context.expr().Length > 1)
+            inc = Visit(context.expr(1));
+
+        // Enter nested loop
+        _loopNestingLevel++;
+        var body = Visit(context.loopStatementsBlock());
+        _loopNestingLevel--;
+        var bodyBlock = body.Trim();
+        if (!bodyBlock.StartsWith("{"))
+            bodyBlock = "{\n" + bodyBlock + "\n}";
+        return $"for ({init}; {cond}; {inc}) {bodyBlock}";
+    }
+
+    public override string VisitEndLoopStatement(ShowScriptParser.EndLoopStatementContext context)
+    {
+        // Set status to EndLoop and return from Loop()
+        return "_status = ScriptLoopStatus.EndLoop;\nreturn;";
     }
 
     public override string VisitArray(ShowScriptParser.ArrayContext context)
@@ -41,6 +112,7 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
         var expr = Visit(context.expr());
         return $"{name} = {expr}";
     }
+
     public override string VisitTryStatement(ShowScriptParser.TryStatementContext context)
     {
         var tryBlock = Visit(context.block());
@@ -80,6 +152,26 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
         sb.Append("}");
         return sb.ToString();
     }
+
+    public override string VisitLoopStatementsBlock(ShowScriptParser.LoopStatementsBlockContext context)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("{");
+        foreach (var stmt in context.loopStatement())
+        {
+            var code = Visit(stmt);
+            if (!string.IsNullOrWhiteSpace(code))
+            {
+                var trimmed = code.TrimEnd();
+                if (!trimmed.EndsWith(";") && !trimmed.EndsWith("}") && !trimmed.StartsWith("public"))
+                    code += ";";
+                sb.AppendLine("    " + code.Replace("\n", "\n    "));
+            }
+        }
+        sb.Append("}");
+        return sb.ToString();
+    }
+
     public override string VisitBreakStatement(ShowScriptParser.BreakStatementContext context)
     {
         return "break;";
@@ -87,7 +179,11 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
 
     public override string VisitContinueStatement(ShowScriptParser.ContinueStatementContext context)
     {
-        return "continue;";
+        // Top-level event loop: return;
+        // Nested loop: continue;
+        return _loopNestingLevel == 0
+            ? "return;"
+            : "continue;";
     }
 
     public override string VisitButtonStateEnum(ShowScriptParser.ButtonStateEnumContext context)
@@ -118,13 +214,13 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
         var expr = Visit(context.expr());
         string code;
         if (int.TryParse(expr, out _))
-            code = $"public const int {name} = {expr};";
+            code = $"private const int {name} = {expr};";
         else if (expr == "true" || expr == "false")
-            code = $"public const bool {name} = {expr};";
+            code = $"private const bool {name} = {expr};";
         else if (expr.StartsWith("\"") && expr.EndsWith("\""))
-            code = $"public const string {name} = {expr};";
+            code = $"private const string {name} = {expr};";
         else
-            code = $"public const dynamic {name} = {expr};";
+            code = $"private static readonly dynamic {name} = {expr};";
 
         if (!_inFunctionOrHandler)
         {
@@ -152,7 +248,13 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
     public override string VisitEventBlock(ShowScriptParser.EventBlockContext context)
     {
         _inFunctionOrHandler = true;
-        var handlerName = $"EventHandler_{++_eventHandlerCounter}";
+        // Reset function state for each handler
+        _functionFields.Clear();
+        _functionInitializations.Clear();
+        _functionLoops.Clear();
+        _functionCounter = 0;
+
+        var handlerClassName = $"EventHandler{++_eventHandlerCounter:0000}";
         var eventTypeAndArgs = context.eventTypeAndArgs();
         var eventType = eventTypeAndArgs.eventType().GetText();
         var eventArgs = new List<string>();
@@ -167,25 +269,119 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
             }
         }
 
+        // Main block (Initialize)
         var blockCode = Visit(context.block());
-        if (!blockCode.TrimEnd().EndsWith("return Task.CompletedTask;"))
+
+        // Flatten block if it's a single { ... }
+        string flatBlockCode;
+        var trimmedBlock = blockCode.Trim();
+        if (trimmedBlock.StartsWith("{") && trimmedBlock.EndsWith("}"))
         {
-            var insertPos = blockCode.LastIndexOf('}');
-            if (insertPos > 0)
-            {
-                blockCode = blockCode.Insert(insertPos, "    return Task.CompletedTask;\n");
-            }
+            flatBlockCode = trimmedBlock.Substring(1, trimmedBlock.Length - 2).Trim('\r', '\n');
         }
-        var handlerMethod = $"private Task {handlerName}(CancellationToken cancellationToken) {blockCode}";
-        _eventHandlerMethods.Add(handlerMethod);
+        else
+        {
+            flatBlockCode = trimmedBlock;
+        }
+
+        // Loop block (Loop)
+        string loopBlockCode;
+        bool hasLoopContent = false;
+        if (context.loopBlock() != null)
+        {
+            // Top-level event loop: set nesting to 0
+            _loopNestingLevel = 0;
+            var loopBody = Visit(context.loopBlock());
+
+            // Always wrap the loop body in braces if not already
+            var loopBodyBlock = loopBody.Trim();
+            if (!loopBodyBlock.StartsWith("{"))
+                loopBodyBlock = "{\n" + loopBodyBlock + "\n}";
+
+            // Inject functionLoops at the start of Loop()
+            var loopLines = string.Join("\n", _functionLoops.Select(l => "        " + l));
+            if (!string.IsNullOrWhiteSpace(loopLines))
+            {
+                // Insert after opening brace
+                var braceIdx = loopBodyBlock.IndexOf('{') + 1;
+                loopBodyBlock = loopBodyBlock.Insert(braceIdx, "\n" + loopLines + "\n");
+            }
+
+            // Remove any return ScriptLoopResult.*; lines (handled by status/return now)
+            var lines = loopBodyBlock.Split('\n')
+                .Where(line => !line.TrimStart().StartsWith("return ScriptLoopResult.Continue;") &&
+                               !line.TrimStart().StartsWith("return ScriptLoopResult.EndLoop;"))
+                .ToArray();
+            loopBodyBlock = string.Join("\n", lines);
+
+            // Check if there is any content in the loop
+            hasLoopContent = lines.Any(line => !string.IsNullOrWhiteSpace(line) && !line.Trim().Equals("{") && !line.Trim().Equals("}"));
+
+            loopBlockCode = $@"
+    public void Loop()
+{IndentBlock(loopBodyBlock, 1)}
+";
+        }
+        else
+        {
+            // If no loop block, still call function loops
+            var loopLines = string.Join("\n", _functionLoops.Select(l => "        " + l));
+            hasLoopContent = !string.IsNullOrWhiteSpace(loopLines);
+            loopBlockCode = $@"
+    public void Loop()
+    {{
+{loopLines}
+    }}
+";
+        }
+
+        // Status field and property
+        var statusInit = hasLoopContent ? "ScriptLoopStatus.Continue" : "ScriptLoopStatus.EndLoop";
+        var statusField = $"private ScriptLoopStatus _status = {statusInit};";
+        var statusProperty = @"
+    public ScriptLoopStatus Status => _status;
+";
+
+        // Handler class
+        var handlerClass = $@"
+private class {handlerClassName} : IScriptEventHandler
+{{
+    private readonly ShowScript _showScript;
+    private readonly ILogger _logger;
+{(_functionFields.Count > 0 ? "    " + string.Join("\n    ", _functionFields) : "")}
+    {statusField}
+
+    public {handlerClassName}(ShowScript showScript, ILogger logger)
+    {{
+        _showScript = showScript;
+        _logger = logger;
+    }}
+
+    public void Initialize()
+    {{
+{IndentBlock(flatBlockCode, 1)}
+{(_functionInitializations.Count > 0 ? IndentBlock(string.Join("\n", _functionInitializations), 1) : "")}
+    }}
+{loopBlockCode}
+{statusProperty}
+}}
+";
+        _eventHandlerClasses.Add(handlerClass);
 
         var eventTypeEnum = $"EventType.{eventType}";
         var argsList = eventArgs.Count > 0 ? ", " + string.Join(", ", eventArgs) : "";
-        var registration = $"{handlerName}, {eventTypeEnum}{argsList}";
+        var registration = $"typeof({handlerClassName}), {eventTypeEnum}{argsList}";
         _eventHandlerRegistrations.Add(registration);
 
         _inFunctionOrHandler = false;
         return "";
+    }
+
+    public override string VisitLoopBlock(ShowScriptParser.LoopBlockContext context)
+    {
+        // Use loopStatementsBlock for the Loop() method body
+        var loopBody = Visit(context.loopStatementsBlock());
+        return loopBody;
     }
 
     public override string VisitExpr(ShowScriptParser.ExprContext context)
@@ -213,12 +409,14 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
         else if (context.expr(1) != null)
             inc = Visit(context.expr(1));
 
+        // Enter nested loop
+        _loopNestingLevel++;
         var body = Visit(context.block());
-
-        body = body.Insert(1,
-            "\r\n\tif (cancellationToken.IsCancellationRequested)\r\n\t{\r\n\t\t          break;\r\n            }");
-
-        return $"for ({init}; {cond}; {inc}) {body}";
+        _loopNestingLevel--;
+        var bodyBlock = body.Trim();
+        if (!bodyBlock.StartsWith("{"))
+            bodyBlock = "{\n" + bodyBlock + "\n}";
+        return $"for ({init}; {cond}; {inc}) {bodyBlock}";
     }
 
     public override string VisitGenericCall(ShowScriptParser.GenericCallContext context)
@@ -277,13 +475,13 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
     {
         var name = context.ID().GetText();
         var expr = Visit(context.expr());
-        var code = $"var {name} = {expr};";
+        var code = $"private static dynamic {name} = {expr};";
         if (!_inFunctionOrHandler)
         {
             _moduleVars.Add(code);
             return "";
         }
-        return code;
+        return $"var {name} = {expr};";
     }
 
     public override string VisitLetStatementNoSemi(ShowScriptParser.LetStatementNoSemiContext context)
@@ -295,7 +493,6 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
 
     public override string VisitLitesCall(ShowScriptParser.LitesCallContext context)
     {
-        // Get all dottedID arguments as strings
         var litesArgs = context.litesArgs().dottedID();
         var liteNames = litesArgs.Select(arg =>
         {
@@ -305,11 +502,49 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
         });
         var litesArray = $"[{string.Join(", ", liteNames)}]";
 
-        // Get the function call (e.g., Chase([...]))
-        var funcCall = context.litesFunction().GetText();
+        var funcName = context.litesFunction().Start.Text;
+        var className = $"Perform.Scripting.Functions.{funcName}";
 
-        // Output the desired C# code
-        return $"_showScript.WithLites(cancellationToken, {litesArray}).{funcCall}";
+        // Extract arguments inside the parentheses
+        var funcText = context.litesFunction().GetText();
+        var argsStart = funcText.IndexOf('(');
+        var args = argsStart >= 0 ? funcText.Substring(argsStart + 1, funcText.Length - argsStart - 2) : "";
+
+        var fieldName = $"_function{++_functionCounter:D4}";
+        _functionFields.Add($"private IDeviceScriptFunction {fieldName};");
+        _functionInitializations.Add($"{fieldName} = new {className}({args});\n{fieldName}.Initialize(_showScript, {litesArray});");
+        _functionLoops.Add($"if (!{fieldName}.IsFinished) {fieldName}.Loop();");
+
+        // Do not emit the old call
+        return "";
+    }
+
+    public override string VisitMotionCall(ShowScriptParser.MotionCallContext context)
+    {
+        var motionArgs = context.motionArgs().dottedID();
+        var motionNames = motionArgs.Select(arg =>
+        {
+            var ids = new List<string>();
+            CollectDottedIds(arg, ids);
+            return $"\"{string.Join(".", ids)}\"";
+        });
+        var motionArray = $"[{string.Join(", ", motionNames)}]";
+
+        var funcName = context.motionFunction().Start.Text;
+        var className = $"Perform.Scripting.Functions.{funcName}";
+
+        // Extract arguments inside the parentheses
+        var funcText = context.motionFunction().GetText();
+        var argsStart = funcText.IndexOf('(');
+        var args = argsStart >= 0 ? funcText.Substring(argsStart + 1, funcText.Length - argsStart - 2) : "";
+
+        var fieldName = $"_function{++_functionCounter:D4}";
+        _functionFields.Add($"private IDeviceScriptFunction {fieldName};");
+        _functionInitializations.Add($"{fieldName} = new {className}({args});\n{fieldName}.Initialize(_showScript, {motionArray});");
+        _functionLoops.Add($"if (!{fieldName}.IsFinished) {fieldName}.Loop();");
+
+        // Do not emit the old call
+        return "";
     }
 
     public override string VisitLogicExpr(ShowScriptParser.LogicExprContext context)
@@ -337,25 +572,6 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
     public override string VisitMathCall(ShowScriptParser.MathCallContext context)
     {
         return $"Math.{context.mathFunction().GetText()}";
-    }
-
-    public override string VisitMotionCall(ShowScriptParser.MotionCallContext context)
-    {
-        // Get all dottedID arguments as strings
-        var motionArgs = context.motionArgs().dottedID();
-        var motionNames = motionArgs.Select(arg =>
-        {
-            var ids = new List<string>();
-            CollectDottedIds(arg, ids);
-            return $"\"{string.Join(".", ids)}\"";
-        });
-        var motionArray = $"[{string.Join(", ", motionNames)}]";
-
-        // Get the function call (e.g., Circle(...))
-        var funcCall = context.motionFunction().GetText();
-
-        // Output the desired C# code
-        return $"_showScript.WithMotion(cancellationToken, {motionArray}).{funcCall}";
     }
 
     public override string VisitMultiplicativeExpr(ShowScriptParser.MultiplicativeExprContext context)
@@ -452,7 +668,7 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
 
     public override string VisitScript(ShowScriptParser.ScriptContext context)
     {
-        _eventHandlerMethods.Clear();
+        _eventHandlerClasses.Clear();
         _eventHandlerRegistrations.Clear();
         _eventHandlerCounter = 0;
         _moduleConstants.Clear();
@@ -467,37 +683,42 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
         sb.AppendLine("using Microsoft.Extensions.Logging;");
         sb.AppendLine("using Perform;");
         sb.AppendLine("using Perform.Model;");
+        sb.AppendLine("using Perform.Interfaces;");
         sb.AppendLine("using System;");
         sb.AppendLine("using System.Threading;");
         sb.AppendLine("using System.Threading.Tasks;");
         sb.AppendLine("using Math = Perform.Scripting.MathMethods;");
         sb.AppendLine();
-        sb.AppendLine("public class GeneratedShowScript : IDisposable");
+        sb.AppendLine("public class GeneratedShowScript");
         sb.AppendLine("{");
         sb.AppendLine("    private readonly ShowScript _showScript;");
         sb.AppendLine("    private readonly ILogger _logger;");
-
+        sb.AppendLine();
+        // Output module-level constants and variables as private static
         foreach (var c in _moduleConstants)
             sb.AppendLine("    " + c);
         foreach (var v in _moduleVars)
             sb.AppendLine("    " + v);
-
+        sb.AppendLine();
         sb.AppendLine("    public GeneratedShowScript(ShowScript showScript, ILogger logger)");
         sb.AppendLine("    {");
         sb.AppendLine("        _showScript = showScript;");
         sb.AppendLine("        _logger = logger;");
-
+        sb.AppendLine("    }");
+        sb.AppendLine();
+        sb.AppendLine("    public void Initialise()");
+        sb.AppendLine("    {");
         foreach (var reg in _eventHandlerRegistrations)
             sb.AppendLine($"        _showScript.AddEventHandler({reg});");
         sb.AppendLine("    }");
-
-        foreach (var method in _eventHandlerMethods)
-            sb.AppendLine("    " + method.Replace("\n", "\n    "));
-
-        sb.AppendLine("    public void Dispose() {");
+        sb.AppendLine();
+        sb.AppendLine("    public void Finalize() {");
         foreach (var reg in _eventHandlerRegistrations)
             sb.AppendLine($"        _showScript.RemoveEventHandler({reg});");
         sb.AppendLine("    }");
+
+        foreach (var handlerClass in _eventHandlerClasses)
+            sb.AppendLine("    " + handlerClass.Replace("\n", "\n    "));
 
         sb.AppendLine("}");
         return sb.ToString();
@@ -583,20 +804,13 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
         var type = MapType(context.typeName().GetText());
         var name = context.ID().GetText();
         var expr = Visit(context.expr());
-        var code = $"public {type} {name} = {expr};";
+        var code = $"private static {type} {name} = {expr};";
         if (!_inFunctionOrHandler)
         {
             _moduleVars.Add(code);
             return "";
         }
         return $"var {name} = {expr};";
-    }
-
-    public override string VisitWhileStatement(ShowScriptParser.WhileStatementContext context)
-    {
-        var cond = Visit(context.expr());
-        var body = Visit(context.block());
-        return $"while ({cond}) {body}";
     }
 
     private static void CollectDottedIds(ShowScriptParser.DottedIDContext ctx, List<string> ids)
@@ -662,6 +876,13 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
             return text;
         }
         return "";
+    }
+
+    private static string IndentBlock(string code, int level)
+    {
+        var indent = new string(' ', level * 4);
+        var lines = code.Split('\n');
+        return string.Join("\n", lines.Select(line => string.IsNullOrWhiteSpace(line) ? line : indent + line));
     }
 
     public override string VisitAtom(ShowScriptParser.AtomContext context)

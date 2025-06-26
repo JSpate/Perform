@@ -85,27 +85,31 @@ on(ButtonChange, 1, ButtonState.Down) {
 
 // On button2 down, run a color chase on all RGB channels
 on(ButtonChange, 2, ButtonState.Down) {
+    Log.Info("Initiating color chase on all RGB channels");
+} loop {
     var colors = [ (255,0,0), (0,255,0), (0,0,255), (255,255,0) ];
-    while(true) {
-        var t = Song.Time();
+    
+    var t = Song.Time();
 
-        if(t>2000){
-            break;
+    if(t>2000){
+        endLoop;
+    }
+
+    if(t>1000){
+        continue;
+    }
+
+    for (var i = 0; i < MaxChaseSteps; i++) {
+        set(DMX.MovingHeadLeft, DMX.MovingHeadRight) {
+            r = colors[i][0];
+            g = colors[i][1];
+            b = colors[i][2];
+            w = 0;
         }
-
-        if(t>1000){
+        if(t>10){
             continue;
         }
-
-        for (var i = 0; i < MaxChaseSteps; i++) {
-            set(DMX.MovingHeadLeft, DMX.MovingHeadRight) {
-                r = colors[i][0];
-                g = colors[i][1];
-                b = colors[i][2];
-                w = 0;
-            }
-            Log.Info("Moving heads chase color: " + colors[i][0] + "," + colors[i][1] + "," + colors[i][2]);
-        }
+        Log.Info("Moving heads chase color: " + colors[i][0] + "," + colors[i][1] + "," + colors[i][2]);
     }
 }
 
@@ -155,6 +159,6 @@ on(BarChange, 20) {
 // At bar 24, start circle movement
 on(BarChange, 24) {
    var x = Math.Sin(7);
-    Lites(DMX.MovingHeadLeft, DMX.MovingHeadRight).Chase([(x, 0, 0), (0, x, 0), (0, 0, x), (x, x, x)]);
-    Motion(DMX.MovingHeadLeft, DMX.MovingHeadRight).Circle(5.5, 15000, 12000);
+    Lites(DMX.MovingHeadLeft, DMX.MovingHeadRight).Chase([(x, 0, 0), (0, x, 0), (0, 0, x), (x, x, x)], 2);
+    Motion(DMX.MovingHeadLeft, DMX.MovingHeadRight).Circle(5.5, 15000, 12000, 5);
 }

@@ -87,17 +87,54 @@ on(StartSong) {
         var csharp = GenerateCSharp(script);
         return Verifier.Verify(csharp);
     }
-
     [Test]
-    public Task WhileLoopWithBreakContinue()
+    public Task OnLoopBlockWithoutEndLoop()
     {
         var script = @"
 on(StartSong) {
-    while (x < 10) {
-        x = x + 1;
-        if (x == 5) break;
-        if (x % 2 == 0) continue;
+    var started = true;
+} loop {
+    Log.Info(""Loop running"");
+}
+";
+        var csharp = GenerateCSharp(script);
+        return Verifier.Verify(csharp);
     }
+
+    [Test]
+    public Task MultipleEventsWithLoopBlocks()
+    {
+        var script = @"
+on(StartSong) {
+    var started = true;
+} loop {
+    Log.Info(""Start loop"");
+    endLoop;
+}
+
+on(EndSong) {
+    var ended = true;
+} loop {
+    Log.Info(""End loop"");
+    endLoop;
+}
+";
+        var csharp = GenerateCSharp(script);
+        return Verifier.Verify(csharp);
+    }
+
+    [Test]
+    public Task OnLoopBlockWithEndLoop()
+    {
+        var script = @"
+on(StartSong) {
+    var started = true;
+} loop {
+    if (started) {
+        Log.Info(""Loop running"");
+        endLoop;
+    }
+    Log.Info(""Still looping"");
 }
 ";
         var csharp = GenerateCSharp(script);

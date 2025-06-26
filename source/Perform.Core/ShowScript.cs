@@ -34,45 +34,19 @@ namespace Perform
             throw new NotImplementedException();
         }
 
-        public void AddEventHandler(Func<CancellationToken, Task> eventHandler, EventType eventType, params object[] parameters)
+        public void AddEventHandler(Type eventHandler, EventType eventType, params object[] parameters)
         {
             throw new NotImplementedException();
         }
 
-        public void RemoveEventHandler(Func<CancellationToken, Task> eventHandler, EventType eventType, params object[] parameters)
+        public void RemoveEventHandler(Type eventHandler, EventType eventType, params object[] parameters)
         {
             throw new NotImplementedException();
         }
 
         public CurrentSong CurrentSong { get; set; } = new(0, 0, 0, 0, "", 0, "4/4");
-
-        public LiteFunctions WithLites(CancellationToken cancellationToken, string[] lites)
-        {
-            throw new NotImplementedException();
-        }
-
-        public MotionFunctions WithMotion(CancellationToken cancellationToken, string[] lites)
-        {
-            throw new NotImplementedException();
-        }
     }
-
-    public class MotionFunctions
-    {
-        public void Circle(double changeAngle, int startX, int startY)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    public class LiteFunctions
-    {
-        public void Chase((double, double, double)[] colors)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
+    
     public class CurrentSong(double time, int bar, int beat, int beatInBar, string title, int bpm, string timeSignature)
     {
         public double Time {get;} = time;

@@ -1,23 +1,31 @@
 ﻿using Microsoft.Extensions.Logging;
 using Perform;
 using Perform.Model;
+using Perform.Interfaces;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Math = Perform.Scripting.MathMethods;
 
-public class GeneratedShowScript : IDisposable
+public class GeneratedShowScript
 {
     private readonly ShowScript _showScript;
     private readonly ILogger _logger;
-    public const int MaxValue = 42;
-    public int number = 5;
-    public string name = "test";
+
+    private const int MaxValue = 42;
+    private static int number = 5;
+    private static string name = "test";
+
     public GeneratedShowScript(ShowScript showScript, ILogger logger)
     {
         _showScript = showScript;
         _logger = logger;
     }
-    public void Dispose() {
+
+    public void Initialise()
+    {
+    }
+
+    public void Finalize() {
     }
 }

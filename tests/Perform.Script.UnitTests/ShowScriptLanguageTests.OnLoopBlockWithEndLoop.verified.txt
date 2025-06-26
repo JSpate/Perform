@@ -32,7 +32,7 @@ public class GeneratedShowScript
     {
         private readonly ShowScript _showScript;
         private readonly ILogger _logger;
-        private IDeviceScriptFunction _function0001;
+    
         private ScriptLoopStatus _status = ScriptLoopStatus.Continue;
     
         public EventHandler0001(ShowScript showScript, ILogger logger)
@@ -43,18 +43,18 @@ public class GeneratedShowScript
     
         public void Initialize()
         {
-            _logger.LogInformation("Hello") ;
-            Math.Sin(3.14) ;
-            Color.RGB(255,0,0) ;
-            _showScript.Get<IDeviceItem>("DMX.Light1") ;
-            _showScript.IsAvailable("DMX.Light1") ;
-        _function0001 = new Perform.Scripting.Functions.Set(255,0,0,0);
-        _function0001.Initialize(_showScript, ["DMX.Light1"]);
+            var started = true;
+    
         }
     
         public void Loop()
         {
-            if (!_function0001.IsFinished) _function0001.Loop();
+            if (started) {
+                _logger.LogInformation("Loop running") ;
+                _status = ScriptLoopStatus.EndLoop;
+                return;
+            }
+            _logger.LogInformation("Still looping") ;
         }
     
     

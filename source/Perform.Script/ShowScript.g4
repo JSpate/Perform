@@ -25,9 +25,9 @@ typeName
     | 'Device'
     ;
 
-// Event blocks: on(EventType(args)) when(...) { ... }
+// Event blocks: on(EventType(args)) when(...) { ... } loop { ... }
 eventBlock
-    : 'on' LPAREN eventTypeAndArgs RPAREN whenBlock? block
+    : 'on' LPAREN eventTypeAndArgs RPAREN whenBlock? block loopBlock?
     ;
 
 eventTypeAndArgs
@@ -68,19 +68,71 @@ whenBlock
     : 'when' LPAREN expr RPAREN
     ;
 
-// Action blocks
+// Loop block and recursive loop statements
+loopBlock
+    : 'loop' loopStatementsBlock
+    ;
+
+loopStatementsBlock
+    : '{' (loopStatement)* '}'
+    ;
+
+// Loop statements allow recursive control flow with loop semantics
+loopStatement
+    : callStatement
+    | assignment
+    | letStatement
+    | ifLoopStatement
+    | forLoopStatement
+    | breakStatement
+    | continueStatement
+    | returnStatement
+    | tryLoopStatement
+    | setBlockStatement
+    | varDeclStatement
+    | endLoopStatement
+    ;
+
+// If/Else for loop blocks (recursive)
+ifLoopStatement
+    : IF LPAREN expr RPAREN loopStatementsBlock (ELSE ifLoopStatement | ELSE loopStatementsBlock)?
+    ;
+
+// For loop for loop blocks (recursive)
+forLoopStatement
+    : FOR LPAREN (letStatementNoSemi | assignmentNoSemi | varDeclNoSemi)? SEMI expr? SEMI (letStatementNoSemi | assignmentNoSemi | varDeclNoSemi | expr)? RPAREN loopStatementsBlock
+    ;
+
+// Try/catch/finally for loop blocks (recursive)
+tryLoopStatement
+    : TRY loopStatementsBlock catchLoopBlock finallyLoopBlock?
+    ;
+
+catchLoopBlock
+    : CATCH LPAREN ID RPAREN loopStatementsBlock
+    ;
+
+finallyLoopBlock
+    : FINALLY loopStatementsBlock
+    ;
+
+// Only allow endLoopStatement in loopStatement, not in general statement
+endLoopStatement
+    : ENDLOOP SEMI
+    ;
+
+// Action blocks (non-loop)
 block
     : '{' (statement)* '}'
     ;
 
-// Statements: device/function calls, assignment, var, if, for, while, try, set block
+// Statements: device/function calls, assignment, var, if, for, try, set block
 statement
     : callStatement
     | assignment
     | letStatement
     | ifStatement
     | forStatement
-    | whileStatement
     | breakStatement
     | continueStatement
     | returnStatement
@@ -159,11 +211,6 @@ assignmentNoSemi
 
 varDeclNoSemi
     : typeName ID ASSIGN expr
-    ;
-
-// While loop: while (condition) { ... }
-whileStatement
-    : WHILE LPAREN expr RPAREN block
     ;
 
 // Break/Continue
@@ -285,7 +332,7 @@ litesFunction
     : 'Set' LPAREN expr ',' expr ',' expr ',' expr RPAREN
     | 'FadeIn' LPAREN expr ',' expr ',' expr ',' expr ',' expr (',' array)? RPAREN
     | 'FadeOut' LPAREN expr ',' expr ',' expr ',' expr ',' expr (',' array)? RPAREN
-    | 'Chase' LPAREN array RPAREN
+    | 'Chase' LPAREN array ',' expr RPAREN
     | 'Pulse' LPAREN expr ',' expr ',' expr ',' expr ',' expr (',' array)? RPAREN
     | 'Blackout' LPAREN RPAREN
     | 'Restore' LPAREN RPAREN
@@ -333,7 +380,7 @@ callArg
     | ID ASSIGN expr
     ;
 
-// If/Else statement
+// If/Else statement (non-loop)
 ifStatement 
     : IF LPAREN expr RPAREN block (ELSE ifStatement | ELSE block)?
     ;
@@ -453,7 +500,6 @@ STRING_TYPE : 'string';
 IF          : 'if';
 ELSE        : 'else';
 FOR         : 'for';
-WHILE       : 'while';
 BREAK       : 'break';
 CONTINUE    : 'continue';
 RETURN      : 'return';
@@ -463,6 +509,8 @@ FINALLY     : 'finally';
 TRUE        : 'true';
 FALSE       : 'false';
 NULL        : 'null';
+
+ENDLOOP     : 'endLoop';
 
 LOG_DOT     : 'Log' '.';
 INFO        : 'Info';

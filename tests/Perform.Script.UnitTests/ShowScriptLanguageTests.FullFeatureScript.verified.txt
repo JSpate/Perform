@@ -1,48 +1,78 @@
 ﻿using Microsoft.Extensions.Logging;
 using Perform;
 using Perform.Model;
+using Perform.Interfaces;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Math = Perform.Scripting.MathMethods;
 
-public class GeneratedShowScript : IDisposable
+public class GeneratedShowScript
 {
     private readonly ShowScript _showScript;
     private readonly ILogger _logger;
-    public const int MaxVal = 10;
-    public int count = 0;
+
+    private const int MaxVal = 10;
+    private static int count = 0;
+
     public GeneratedShowScript(ShowScript showScript, ILogger logger)
     {
         _showScript = showScript;
         _logger = logger;
-        _showScript.AddEventHandler(EventHandler_1, EventType.ButtonChange, 1, ButtonState.Down);
     }
-    private Task EventHandler_1(CancellationToken cancellationToken) {
-        for (var i = 0; i < MaxVal; ) {
-        	if (cancellationToken.IsCancellationRequested)
-        	{
-        		          break;
-                    }
-            if (i == 5) {
-                break;
-            }
-            if (i % 2 == 0) {
-                continue;
-            }
-            _showScript.Set("DMX.Light1.r", i * 10);
+
+    public void Initialise()
+    {
+        _showScript.AddEventHandler(typeof(EventHandler0001), EventType.ButtonChange, 1, ButtonState.Down);
+    }
+
+    public void Finalize() {
+        _showScript.RemoveEventHandler(typeof(EventHandler0001), EventType.ButtonChange, 1, ButtonState.Down);
+    }
+    
+    private class EventHandler0001 : IScriptEventHandler
+    {
+        private readonly ShowScript _showScript;
+        private readonly ILogger _logger;
+    
+        private ScriptLoopStatus _status = ScriptLoopStatus.EndLoop;
+    
+        public EventHandler0001(ShowScript showScript, ILogger logger)
+        {
+            _showScript = showScript;
+            _logger = logger;
+        }
+    
+        public void Initialize()
+        {
+            for (var i = 0; i < MaxVal; ) {
+                if (i == 5) {
+                    break;
+                }
+                if (i % 2 == 0) {
+                    continue;
+                }
+                _showScript.Set("DMX.Light1.r", i * 10);
             
+            }
+            try {
+                _logger.LogInformation("Try") ;
+            } catch (Exception ex) {
+                _logger.LogError(ex) ;
+            } finally {
+                _logger.LogInformation("Finally") ;
+            }
+    
         }
-        try {
-            _logger.LogInformation("Try") ;
-        } catch (Exception ex) {
-            _logger.LogError(ex) ;
-        } finally {
-            _logger.LogInformation("Finally") ;
+    
+        public void Loop()
+        {
+    
         }
-        return Task.CompletedTask;
+    
+    
+        public ScriptLoopStatus Status => _status;
+    
     }
-    public void Dispose() {
-        _showScript.RemoveEventHandler(EventHandler_1, EventType.ButtonChange, 1, ButtonState.Down);
-    }
+    
 }

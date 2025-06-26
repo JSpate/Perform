@@ -180,7 +180,7 @@ public abstract class Packet
                 index++;
         }
 
-        return new Message(address, arguments.ToArray());
+        return new Message(address, Encoding.UTF8.GetString(msg), arguments.ToArray());
     }
 
     /// <summary>

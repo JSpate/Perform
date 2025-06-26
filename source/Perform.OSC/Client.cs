@@ -1,7 +1,7 @@
-﻿using System.Net.Sockets;
-using System.Net;
-using Perform.OSC.Data;
+﻿using System.Net;
+using System.Net.Sockets;
 using Perform.Model;
+using Perform.OSC.Data;
 
 namespace Perform.OSC;
 

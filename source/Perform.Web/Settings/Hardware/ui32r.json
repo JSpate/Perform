@@ -1,0 +1,7 @@
+{
+  "name": "ui32r",
+  "type": "ui32r",
+  "settings": {
+    "ipAddress": "192.168.1.50"
+  }
+}

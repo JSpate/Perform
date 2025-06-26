@@ -1,37 +1,32 @@
-﻿using System.Text.Json.Serialization;
-using Perform.SequencedEvents;
-
-namespace Perform.Model;
+﻿namespace Perform.Model;
 
 public class Song
 {
-    [JsonConstructor]
-    public Song(
-        string name,
-        IDictionary<string, Sequence> sequences,
-        IDictionary<string, IList<ChaseLight>> chases,
-        Sequence? initializationSequence,
-        IDictionary<string, SongSection>? sections)
-    {
-        Name = name;
-        Sequences = sequences;
-        Chases = chases;
-        InitializationSequence = initializationSequence ?? new Sequence();
-        Sections = sections ?? new Dictionary<string, SongSection>();
-    }
+    public string Name { get; set; } = string.Empty;
 
-    [JsonPropertyName("name")]
-    public string Name { get; }
+    public string? Description { get; set; }
 
-    [JsonPropertyName("sequences")]
-    public IDictionary<string, Sequence> Sequences { get; }
+    public List<SongSection>? Lyrics {get; set; }
 
-    [JsonPropertyName("chases")]
-    public IDictionary<string, IList<ChaseLight>> Chases { get; }
+    public string? TimeSignature { get; set; } = null;
 
-    [JsonPropertyName("initSequence")]
-    public Sequence InitializationSequence { get; }
+    public int? BPM { get; set; } = null;
 
-    [JsonPropertyName("sections")]
-    public IDictionary<string, SongSection> Sections { get; }
+    public List<ConsoleSettings> Consoles { get; set; } = [];
+}
+
+public class SongSection
+{
+    private string Name { get; set; } = string.Empty;
+
+    private string Type { get; set; } = string.Empty;
+
+    public List<SongLine> Lines { get; set; } = [];
+}
+
+public class SongLine
+{
+    public string Text { get; set; } = string.Empty;
+ 
+    public int Bar { get; set; } = 0;
 }

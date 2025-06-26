@@ -1,0 +1,193 @@
+{
+  "name": "Copper Head Road",
+  "description": "Ibanez & Ltd - Get the timing right Christy: D G no capo",
+  "timeSignature": "4/4",
+  "bpm": 74,
+  "script": "redLights.showScript",
+  "lyrics": [
+    {
+      "name": "Intro",
+      "type": "intro",
+      "lines": [
+        {
+          "bar": 0,
+          "text": "[Intro]"
+        }
+      ]
+    },
+    {
+      "name": "Verse 1",
+      "type": "verse",
+      "lines": [
+        {
+          "bar": 0,
+          "text": "Well my name's John Lee Pettimore [Riff 1] (D)"
+        },
+        {
+          "bar": 1,
+          "text": "Same as my daddy and his daddy before [Riff 1] (D)"
+        },
+        {
+          "bar": 2,
+          "text": "You hardly ever saw Grandaddy down here [Riff 1] (D)"
+        },
+        {
+          "bar": 3,
+          "text": "He only came to town about twice a year [Riff 1] (D)"
+        },
+        {
+          "bar": 4,
+          "text": "He'd buy a hundred pounds of yeast and some copper line [Riff 1] (D)"
+        },
+        {
+          "bar": 5,
+          "text": "Everybody knew that he made moonshine [Riff 1] (D)"
+        },
+        {
+          "bar": 6,
+          "text": "Now the revenue man wanted Grandaddy bad [Riff 1] (G C G)"
+        },
+        {
+          "bar": 7,
+          "text": "He headed up the holler with everything he had [Riff 1] (D)"
+        },
+        {
+          "bar": 8,
+          "text": "It's before my time but I've been told [Riff 1] (G C G)"
+        },
+        {
+          "bar": 9,
+          "text": "He never came back from Copperhead Road [Riff 1] (D)"
+        }
+      ]
+    },
+    {
+      "name": "Verse 2",
+      "type": "verse",
+      "lines": [
+        {
+          "bar": 0,
+          "text": "Now Daddy ran the whiskey in a big block Dodge [Riff 1] (D)"
+        },
+        {
+          "bar": 1,
+          "text": "Bought it at an auction at the Mason's Lodge [Riff 1] (D)"
+        },
+        {
+          "bar": 2,
+          "text": "Johnson County Sheriff painted on the side [Riff 1] (D)"
+        },
+        {
+          "bar": 3,
+          "text": "Just shot a coat of primer then he looked inside [Riff 1] (D)"
+        },
+        {
+          "bar": 4,
+          "text": "Well him and my uncle tore that engine down [Riff 1] (D)"
+        },
+        {
+          "bar": 5,
+          "text": "I still remember that rumblin' sound [Riff 1] (D)"
+        },
+        {
+          "bar": 6,
+          "text": "Well the sheriff came around in the middle of the night [Riff 1] (G C G)"
+        },
+        {
+          "bar": 7,
+          "text": "Heard mama cryin', knew something wasn't right [Riff 1] (D)"
+        },
+        {
+          "bar": 8,
+          "text": "He was headed down to Knoxville with the weekly load [Riff 1] (G C G)"
+        },
+        {
+          "bar": 9,
+          "text": "You could smell the whiskey burnin' down Copperhead Road [Riff 1] (D let ring)"
+        }
+      ]
+    },
+    {
+      "name": "Solo",
+      "type": "solo",
+      "lines": [
+        {
+          "bar": 0,
+          "text": "[Solo] (G  C G  D) x2"
+        }
+      ]
+    },
+    {
+      "name": "Verse 3",
+      "type": "verse",
+      "lines": [
+        {
+          "bar": 0,
+          "text": "I volunteered for the Army on my birthday [Riff 1] (D)"
+        },
+        {
+          "bar": 1,
+          "text": "They draft the white trash first, 'round here anyway [Riff 1] (D)"
+        },
+        {
+          "bar": 2,
+          "text": "I done two tours of duty in Vietnam [Riff 1] (D)"
+        },
+        {
+          "bar": 3,
+          "text": "And I came home with a brand new plan [Riff 1] (D)"
+        },
+        {
+          "bar": 4,
+          "text": "I take the seed from Colombia and Mexico [Riff 1] (D)"
+        },
+        {
+          "bar": 5,
+          "text": "I plant it up the holler down Copperhead Road [Riff 1] (D)"
+        },
+        {
+          "bar": 6,
+          "text": "Well the D.E.A.'s got a chopper in the air [Riff 1] (G C G)"
+        },
+        {
+          "bar": 7,
+          "text": "I wake up screaming like I'm back over there [Riff 1] (D)"
+        },
+        {
+          "bar": 8,
+          "text": "I learned a thing or two from ol' Charlie don't you know [Riff 1] (G C G)"
+        },
+        {
+          "bar": 9,
+          "text": "You better stay away from Copperhead Road [Riff 1] (D)"
+        }
+      ]
+    },
+    {
+      "name": "Outro",
+      "type": "outro",
+      "lines": [
+        {
+          "bar": 0,
+          "text": "Whoa"
+        },
+        {
+          "bar": 1,
+          "text": "Copperhead Road"
+        },
+        {
+          "bar": 2,
+          "text": "Copperhead Road"
+        },
+        {
+          "bar": 3,
+          "text": "Ha, Copperhead Road"
+        },
+        {
+          "bar": 4,
+          "text": "[Riff 1] [Riff 2]"
+        }
+      ]
+    }
+  ]
+}

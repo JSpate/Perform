@@ -1,30 +1,15 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Perform.Model;
 
-public class OscConfig
+public class OscConfig(string ipAddress, int sendPort, int receivePort)
 {
-    public OscConfig(string ipAddress, int sendPort, int receivePort)
-    {
-        IpAddress = ipAddress;
-        SendPort = sendPort;
-        ReceivePort = receivePort;
-    }
-
-    public OscConfig(JsonElement element)
-    {
-        IpAddress = element.GetProperty("ipAddress").GetString() ?? "";
-        SendPort = element.GetProperty("sendPort").GetInt32();
-        ReceivePort = element.GetProperty("receivePort").GetInt32();
-    }
-
     [JsonPropertyName("ipAddress")]
-    public string IpAddress { get; }
+    public string IpAddress { get; } = ipAddress;
 
     [JsonPropertyName("sendPort")]
-    public int SendPort { get; }
+    public int SendPort { get; } = sendPort;
 
     [JsonPropertyName("receivePort")]
-    public int ReceivePort { get; }
+    public int ReceivePort { get; } = receivePort;
 }

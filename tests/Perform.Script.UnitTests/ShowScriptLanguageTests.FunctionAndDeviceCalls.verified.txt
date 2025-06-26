@@ -1,0 +1,31 @@
+﻿using Microsoft.Extensions.Logging;
+using Perform;
+using Perform.Model;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Math = Perform.Scripting.MathMethods;
+
+public class GeneratedShowScript : IDisposable
+{
+    private readonly ShowScript _showScript;
+    private readonly ILogger _logger;
+    public GeneratedShowScript(ShowScript showScript, ILogger logger)
+    {
+        _showScript = showScript;
+        _logger = logger;
+        _showScript.AddEventHandler(EventHandler_1, EventType.StartSong);
+    }
+    private Task EventHandler_1(CancellationToken cancellationToken) {
+        _logger.LogInformation("Hello") ;
+        Math.Sin(3.14) ;
+        Color.RGB(255,0,0) ;
+        _showScript.WithLites(cancellationToken, ["DMX.Light1"]).Set(255,0,0,0) ;
+        _showScript.Get<IDeviceItem>("DMX.Light1") ;
+        _showScript.IsAvailable("DMX.Light1") ;
+        return Task.CompletedTask;
+    }
+    public void Dispose() {
+        _showScript.RemoveEventHandler(EventHandler_1, EventType.StartSong);
+    }
+}

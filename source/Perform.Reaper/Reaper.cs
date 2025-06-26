@@ -1,118 +1,339 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Text.Json;
 using Perform.Model;
 using Perform.Model.Console;
 using Perform.OSC;
 using Perform.OSC.Data;
-using ReaperTrack = Perform.Reaper.Track;
 
 namespace Perform.Reaper;
 
 public sealed class Reaper : IMidiConsole
 {
+    public event ValueChangedEventHandler? ValueChanged;
+
     private delegate void SendDelegate(string address, params object?[] args);
 
-    private readonly ManualResetEventSlim _reset = new(true);
     private readonly IClient _oscClient;
     private readonly Tracks _tracks = new();
-    private readonly ConcurrentQueue<Message> _toProcess = new();
     private Task? _processTask;
-    private LevelValue _masterVolume;
-    private LevelValue _masterPan;
-    
+    private int? _tempo;
+
     public Reaper(string name, OscConfig config)
     {
         Name = name;
         _oscClient = new ClientFactory()
-            .Create(
-                config,
-                MessageReceived);
-        
+            .Create(config, MessageReceived);
+
         // Reset OSC
         Send("i/action", 41743);
     }
 
     public string Name { get; }
 
-    public LevelValue MasterVolume => _masterVolume;
+    public float MasterVolume { get; private set; }
 
-    public LevelValue MasterPan => _masterPan;
+    public float MasterPan { get; private set; }
 
-    public ITrack Track(int id)
+    public int? Tempo
     {
-        return new TrackWrapper(Send, _tracks, id);
+        get => _tempo;
+        set
+        {
+            if (_tempo != value)
+            {
+                _tempo = value;
+                if (_tempo != null)
+                {
+                   Send("/tempo/raw", (float)_tempo);
+                }
+            }
+        }
     }
 
-    public ITrack Track(string name)
+    public bool TryGetTrack(int id, out ITrack track)
     {
-        return Track(_tracks[name].Id);
+        if (_tracks.HasId(id))
+        {
+            track = new TrackWrapper(Send, ValueChanged, _tracks, id);
+            return true;
+        }
+        track = null!;
+        return false;
+    }
+
+    public bool TryGetTrack(string name, out ITrack track)
+    {
+        if (_tracks.TryGetId(name, out var id))
+        {
+            track = new TrackWrapper(Send, ValueChanged, _tracks, id);
+            return true;
+        }
+        track = null!;
+        return false;
+    }
+
+    public bool? GetState(Dictionary<string, Dictionary<string, JsonElement>> state)
+    {
+        bool? result = null;
+        void UpdateResult(bool value)
+        {
+            if (result == null)
+            {
+                result = value;
+            }
+            else
+            {
+                result &= value;
+            }
+        }
+
+        foreach (var trackEntry in state)
+        {
+            var trackName = trackEntry.Key;
+            if (!TryGetTrack(trackName, out var track))
+            {
+                continue;
+            }
+
+            foreach (var propertyEntry in trackEntry.Value)
+            {
+                var propertyPath = propertyEntry.Key.Split('.');
+                var value = propertyEntry.Value;
+
+                switch (propertyPath[0])
+                {
+                    case "armed":
+                        UpdateResult(track.Armed == value.GetBoolean());
+                        break;
+                    case "mute":
+                        UpdateResult(track.Mute = value.GetBoolean());
+                        break;
+                    case "volume":
+                        if (value.TryGetInt32(out var volume))
+                        {
+                            UpdateResult(Math.Abs(track.Volume - volume) < 0.0001);
+                        }
+                        break;
+                    case "pan":
+                        if (value.TryGetInt32(out var pan))
+                        {
+                            UpdateResult(Math.Abs(track.Pan - pan) < 0.0001);
+                        }
+                        break;
+                    case "fx":
+                        if (propertyPath.Length >= 3 && int.TryParse(propertyPath[1], out var fxId))
+                        {
+                            var fx = track.Fx(fxId);
+                            switch (propertyPath[2])
+                            {
+                                case "preset":
+                                    UpdateResult(fx.Preset == value.GetString());
+                                    break;
+                                case "fxparam":
+                                    switch (propertyPath[4])
+                                    {
+                                        case "value":
+                                            if (propertyPath.Length == 5 &&
+                                                int.TryParse(propertyPath[3], out var paramId))
+                                            {
+                                                float paramValue;
+                                                if (value.ValueKind == JsonValueKind.True)
+                                                {
+                                                    paramValue = 0;
+                                                }
+                                                else if (value.ValueKind == JsonValueKind.False)
+                                                {
+                                                    paramValue = 1;
+                                                }
+                                                else if (value.ValueKind == JsonValueKind.Number)
+                                                {
+                                                    paramValue = value.GetSingle();
+                                                }
+                                                else
+                                                {
+                                                    break;
+                                                }
+
+                                                var parameter = fx.Parameter(paramId);
+                                                UpdateResult(Math.Abs(parameter.Value - paramValue) < 0.0001);
+                                            }
+                                            break;
+
+                                        case "toggle":
+                                            if (propertyPath.Length == 5 && int.TryParse(propertyPath[3], out paramId))
+                                            {
+                                                var parameter = fx.Parameter(paramId);
+                                                UpdateResult(parameter.Value == 0);
+                                            }
+                                            break;
+                                    }
+
+                                    break;
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public void SetState(Dictionary<string, Dictionary<string, JsonElement>> state)
+    {
+        foreach (var trackEntry in state)
+        {
+            var trackName = trackEntry.Key;
+            if (!TryGetTrack(trackName, out var track))
+            {
+                continue;
+            }
+
+            foreach (var propertyEntry in trackEntry.Value)
+            {
+                var propertyPath = propertyEntry.Key.Split('.');
+                var value = propertyEntry.Value;
+
+                switch (propertyPath[0])
+                {
+                    case "armed":
+                        track.Armed = value.GetBoolean();
+                        break;
+                    case "mute":
+                        track.Mute = value.GetBoolean();
+                        break;
+                    case "volume":
+                        if (value.TryGetInt32(out var volume))
+                        {
+                            track.Volume = volume;
+                        }
+                        if (value.TryGetSingle(out var volumeS))
+                        {
+                            track.Volume = volumeS;
+                        }
+                        break;
+                    case "pan":
+                        if (value.TryGetInt32(out var pan))
+                        {
+                            track.Pan = pan;
+                        }
+                        if (value.TryGetSingle(out var panS))
+                        {
+                            track.Pan = panS;
+                        }
+                        break;
+                    case "fx":
+                        if (propertyPath.Length >= 3 && int.TryParse(propertyPath[1], out var fxId))
+                        {
+                            var fx = track.Fx(fxId);
+                            switch (propertyPath[2])
+                            {
+                                case "preset":
+                                    fx.Preset = value.GetString();
+                                    break;
+                                case "fxparam":
+                                    switch (propertyPath[4])
+                                    {
+                                        case "value":
+                                            if (propertyPath.Length == 5 &&
+                                                int.TryParse(propertyPath[3], out var paramId))
+                                            {
+                                                float paramValue;
+                                                if (value.ValueKind == JsonValueKind.True)
+                                                {
+                                                    paramValue = 0;
+                                                }
+                                                else if (value.ValueKind == JsonValueKind.False)
+                                                {
+                                                    paramValue = 1;
+                                                }
+                                                else if (value.ValueKind == JsonValueKind.Number)
+                                                {
+                                                    paramValue = value.GetSingle();
+                                                }
+                                                else
+                                                {
+                                                    break;
+                                                }
+
+                                                var parameter = fx.Parameter(paramId);
+                                                parameter.Value = paramValue;
+                                            }
+
+                                            break;
+
+                                        case "toggle":
+                                            if (propertyPath.Length == 5 && int.TryParse(propertyPath[3], out paramId))
+                                            {
+                                                fx.Parameter(paramId).Toggle();
+                                            }
+
+                                            break;
+                                    }
+
+                                    break;
+                            }
+                        }
+                        break;
+                }
+            }
+        }
     }
 
     public void SendMidiNote(int channel, int note, int value)
     {
-        Send($"i/midi/{channel}/{note}", value);
+        Send($"i/vkb_midi/{channel}/note/{note}", value);
     }
 
     public void SendMidiControlChange(int channel, int change, int value)
     {
-        Send($"i/midi/cc/{channel}/{change}", value);
+        Send($"i/vkb_midi/{channel}/cc/{change}", value);
     }
-    
+
     private Task MessageReceived(Packet? packet)
     {
         if (packet != null)
         {
             foreach (var msg in packet.Messages)
             {
-                Enqueue(msg);
-            }
-        }
-        return Task.CompletedTask;
-    }
-
-    private void Enqueue(Message msg)
-    {
-        _toProcess.Enqueue(msg);
-
-        if (_reset.IsSet)
-        {
-            _processTask = ProcessQueue().ContinueWith(_ => _reset.Set());
-        }
-    }
-
-    private Task ProcessQueue()
-    {
-        _reset.Reset();
-
-        while (_toProcess.TryDequeue(out var msg))
-        {
-            switch (msg.Address[0])
-            {
-                case "master":
-                    switch (msg.Address[1])
+                try
+                {
+                    switch (msg.Address[0])
                     {
-                        case "volume":
-                            _masterVolume = (float)(msg.Arguments[0] ?? 0);
+                        case "tempo" when msg.Address is [_, "raw"] && msg.Arguments[0] is float v:
+                            Tempo = Convert.ToInt32(v);
                             break;
-                        case "pan":
-                            _masterPan = (float)(msg.Arguments[0] ?? 127);
+                        case "master":
+                            switch (msg.Address[1])
+                            {
+                                case "volume" when msg.Arguments[0] is float v:
+                                    MasterVolume = v;
+                                    break;
+                                case "pan" when msg.Arguments[0] is float p:
+                                    MasterPan = p;
+                                    break;
+                            }
+                            break;
+
+                        case "track":
+                            if (int.TryParse(msg.Address[1], out var track))
+                            {
+                                UpdateTrack(track, msg);
+                            }
                             break;
                     }
-                    break;
-                case "device":
-                    break;
-                default:
-                    var track = int.Parse(msg.Address[0]);
-                    UpdateTrack(track, msg);
-                    break;
+                }
+                catch (Exception)
+                {
+                    // Ignore
+                }
             }
         }
-
         return Task.CompletedTask;
     }
 
     private void Send(string address, params object?[] args)
     {
-        _oscClient.Send(new Message(address, args));
+        _oscClient.Send(new Message(address, "", args));
     }
 
     public void Dispose()
@@ -125,109 +346,190 @@ public sealed class Reaper : IMidiConsole
 
     private void UpdateTrack(int id, Message msg)
     {
-        switch (msg.Address[1])
+        switch (msg.Address[2])
         {
             case "name":
-                _tracks.AddUpdate(
+                _tracks.Update(
                     id,
-                    i => ReaperTrack.Create(i, name: (string)(msg.Arguments[0] ?? "")),
-                    (_, t) => ReaperTrack.UpdateName(t, (string)(msg.Arguments[0] ?? "")));
+                    t => t.Name = msg.Arguments[0]?.ToString() ?? string.Empty);
                 break;
-            case "volume":
-                _tracks.AddUpdate(
-                    id,
-                    i => ReaperTrack.Create(i, volume: (float)(msg.Arguments[0] ?? 0f)),
-                    (_, t) => ReaperTrack.UpdateVolume(t, (float)(msg.Arguments[0] ?? 0f)));
+            case "volume" when msg.Arguments[0] is float v:
+                _tracks.Update(id, t => t.Volume = v);
+                ValueChanged?.Invoke(id, "volume");
                 break;
-            case "pan":
-                _tracks.AddUpdate(
-                    id,
-                    i => ReaperTrack.Create(i, pan: (float)(msg.Arguments[0] ?? 0.5f)),
-                    (_, t) => ReaperTrack.UpdatePan(t, (float)(msg.Arguments[0] ?? 0.5f)));
+            case "pan" when msg.Arguments[0] is float v:
+                _tracks.Update(id, t => t.Pan = v);
+                ValueChanged?.Invoke(id, "pan");
                 break;
             case "vu":
-                _tracks.AddUpdate(
-                    id,
-                    i => ReaperTrack.Create(i, level: (float)(msg.Arguments[0] ?? 0f)),
-                    (_, t) => ReaperTrack.UpdateLevel(t, (float)(msg.Arguments[0] ?? 0f)));
+
                 break;
-            case "mute":
-                _tracks.AddUpdate(
-                    id,
-                    i => ReaperTrack.Create(i, mute: msg.Arguments[0]?.Equals(1f) ?? false),
-                    (_, t) => ReaperTrack.UpdateMute(t, msg.Arguments[0]?.Equals(1f) ?? false));
+            case "mute" when msg.Arguments[0] is float v:
+                _tracks.Update(id, t => t.Mute = v > 0);
+                ValueChanged?.Invoke(id, "mute");
+                break;
+            case "recarm" when msg.Arguments[0] is float v:
+                _tracks.Update(id, t => t.Armed = v > 0);
+                ValueChanged?.Invoke(id, "armed");
                 break;
             case "fx":
-                var fxId = int.Parse(msg.Address[2]);
-                _tracks.AddUpdate(
-                    id,
-                    i => ReaperTrack.Create(i, fxId: fxId, fxName: (string)(msg.Arguments[0] ?? "")),
-                    (_, t) => (ReaperTrack.UpdateFx(t, fxId, (string)(msg.Arguments[0] ?? ""))));
+                var fxId = int.Parse(msg.Address[3]);
+                _tracks.UpdateFx(id, fxId, fx =>
+                {
+                    switch (msg.Address[4])
+                    {
+                        case "name":
+                            fx.Name = (string)(msg.Arguments[0] ?? "");
+                            break;
+                        case "preset":
+                            fx.Preset = (string)(msg.Arguments[0] ?? "");
+                            ValueChanged?.Invoke(id, $"fx/{fxId}/preset");
+                            break;
+                        case "fxparam":
+                            var param = fx.Parameters.GetOrAdd(int.Parse(msg.Address[5]), i => new FxParameter(i));
+                            if (msg.Address[6] == "value")
+                            {
+                                param.Value = (float)(msg.Arguments[0] ?? 0f);
+                                ValueChanged?.Invoke(id, $"fx/{fxId}/fxparam/{param.Id}");
+                            }
+                            break;
+                    }
+                });
                 break;
         }
     }
 
-    private class TrackWrapper : ITrack
+    private class TrackWrapper(SendDelegate send, ValueChangedEventHandler? changedEvent, Tracks tracks, int id) : ITrack
     {
-        private readonly int _id;
-        private readonly Tracks _tracks;
-        private readonly SendDelegate _send;
+        public int Id => id;
 
-        public TrackWrapper(SendDelegate send, Tracks tracks, int id)
-        {
-            _send = send;
-            _tracks = tracks;
-            _id = id;
-        }
-
-        public int Id => _id;
-
-        public string Name => _tracks[_id].Name;
+        public string? Name => tracks[id].Name;
 
         public bool Mute
         {
-            get => _tracks[_id].Mute; 
-            set=> _send($"b/{(_id)}/mute", value ? 1 : 0);
+            get => tracks[id].Mute;
+            set
+            {
+                if (tracks[id].Mute == value)
+                {
+                    return;
+                }
+                send($"/track/{id}/mute", value ? 1f : 0f);
+                tracks[id].Mute = value;
+                changedEvent?.Invoke(id, "mute");
+            }
         }
 
-        public LevelValue Pan {
-            get => _tracks[_id].Pan;
-            set => _send($"b/{(_id)}/pan", (float)value);
-        }
-
-        public LevelValue Volume
+        public bool Armed
         {
-            get => _tracks[_id].Pan;
-            set => _send($"b/{(_id)}/volume", (float)value);
+            get => tracks[id].Armed;
+            set
+            {
+                if (tracks[id].Armed == value)
+                {
+                    return;
+                }
+
+                send($"/track/{id}/recarm", value ? 1f : 0f);
+                tracks[id].Armed = value;
+                changedEvent?.Invoke(id, "armed");
+            }
+        }
+
+        public float Pan
+        {
+            get => tracks[id].Pan;
+            set
+            {
+                if (Math.Abs(tracks[id].Pan - value) < 0.0001)
+                {
+                    return;
+                }
+                send($"/track/{id}/pan", value);
+                tracks[id].Pan = value;
+                changedEvent?.Invoke(id, "pan");
+            }
+        }
+
+        public float Volume
+        {
+            get => tracks[id].Volume;
+            set
+            {
+                if (Math.Abs(tracks[id].Volume - value) < 0.0001)
+                {
+                    return;
+                }
+                send($"/track/{id}/volume", value);
+                tracks[id].Volume = value;
+                changedEvent?.Invoke(id, "volume");
+            }
         }
 
         public IFx Fx(int fxId)
         {
-            return new FxWrapper(_send, _tracks, _id, fxId);
+            return new FxWrapper(send, changedEvent, tracks, id, fxId);
         }
 
-        private class FxWrapper : IFx
+        private class FxWrapper(SendDelegate send, ValueChangedEventHandler? changedEvent, Tracks tracks, int trackId, int fxId) : IFx
         {
-            private readonly SendDelegate _send;
-            private readonly Tracks _tracks;
-            private readonly int _trackId;
+            public int Id => fxId;
 
-            public FxWrapper(SendDelegate send, Tracks tracks, int trackId, int fxId)
+            public string? Preset
             {
-                _send = send;
-                _tracks = tracks;
-                _trackId = trackId;
-                Id = fxId;
+                get => tracks[trackId].Fx[fxId].Preset;
+                set
+                {
+                    if (tracks[trackId].Fx[fxId].Preset == value)
+                    {
+                        return;
+                    }
+
+                    send($"/track/{trackId}/fx/{fxId}/preset", value);
+                    tracks[trackId].Fx[fxId].Preset = value;
+                    changedEvent?.Invoke(trackId, $"fx/{fxId}/preset");
+                }
             }
 
-            public int Id { get; }
-
-            public string Preset
+            public IFxParameter Parameter(int parameterId)
             {
-                get => _tracks[_trackId].FxPresets[Id];
-                set => _send($"s/{_trackId}/fx/{Id}/preset", value);
+                return new FxParameterWrapper(send, changedEvent, tracks, trackId, fxId, parameterId);
+            }
+        }
+
+        private class FxParameterWrapper(
+            SendDelegate send,
+            ValueChangedEventHandler? changedEvent,
+            Tracks tracks,
+            int trackId,
+            int fxId,
+            int parameterId) : IFxParameter
+        {
+            public int Id => parameterId;
+
+            public float Value
+            {
+                get => tracks[trackId].Fx[fxId].Parameters[parameterId].Value;
+                set
+                {
+                    var param = tracks[trackId].Fx[fxId].Parameters[parameterId];
+                    if (Math.Abs(param.Value - value) < 0.0001)
+                    {
+                        return;
+                    }
+
+                    param.Value = value;
+                    send($"/track/{trackId}/fx/{fxId}/fxparam/{parameterId}/value", value);
+                    changedEvent?.Invoke(trackId, $"fx/{fxId}/fxparam/{parameterId}");
+                }
+            }
+
+            public void Toggle()
+            {
+                var param = tracks[trackId].Fx[fxId].Parameters[parameterId];
+                var newValue = param.Value < 0.5f ? .9f : 0;
+                Value = newValue;
             }
         }
     }
 }
-

@@ -1,0 +1,40 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Perform</title>
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="stylesheet" href="perform.css" />
+    <script src="perform.js"></script>
+</head>
+<body>
+    <div id="select" style="display: none">
+        <h1>Welcome to Perform</h1>
+        <select id="selectShow" onchange="document.querySelector('#selectShowButton').disabled = !this.value">
+            <option value="" disabled selected>Please select a show</option>
+        </select>
+        <button id="selectShowButton" disabled onclick="selectShow()">Select</button>
+    </div>
+    <div id="show" style="display: none">
+        <h1 id="songName" class="fullWidth"></h1>
+        <div id="songDescription" class="description"></div>
+        <div id="lyricsContainer" class="lyrics" style="text-align: center; margin-top: 20px;"></div>
+        <div id="songButtons" class="buttons" style="display: none">
+            <button id="songPrevious" onclick="previousSong()">< Previous</button>
+            <button id="songNext" onclick="nextSong()">Next ></button>
+            <button id="showExit" class="danger" onclick="endShow()" style="grid-column:3; grid-row:2">End Show</button>
+            <button id="songStart" onclick="startSong()" style="grid-column:4; grid-row:2">Start</button>
+        </div>
+
+        <div id="activeButtons" class="buttons" style="display: none">
+            <div id="stomp0" class="stomp">Stomp 1<div class="light"></div></div>
+            <div id="stomp1" class="stomp">Stomp 2<div class="light"></div></div>
+            <div id="stomp2" class="stomp">Stomp 3<div class="light"></div></div>
+            <div id="stomp3" class="stomp">Stomp 4<div class="light"></div></div>
+            <button onclick="endSong()" style="grid-column:4; grid-row:2">End Song</button>
+        </div>
+    </div>
+    <div id="light"></div>
+    <div id="errorOverlay"></div>
+</body>
+</html>

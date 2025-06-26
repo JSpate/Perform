@@ -1,13 +1,8 @@
 ﻿namespace Perform.OSC.Data;
 
-public class Symbol
+public class Symbol(string value)
 {
-    public readonly string Value;
-		
-    public Symbol(string value)
-    {
-        Value = value;
-    }
+    public readonly string Value = value;
 
     public override string ToString()
     {

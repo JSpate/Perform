@@ -1,12 +1,22 @@
-﻿namespace Perform.Model.Console;
+﻿using System.Text.Json;
 
-public interface IConsole : IDisposable
+namespace Perform.Model.Console;
+
+public interface IConsole : IDevice
 {
-    LevelValue MasterVolume { get; }
+    event ValueChangedEventHandler? ValueChanged;
 
-    LevelValue MasterPan { get; }
+    int? Tempo { get; set; }
 
-    ITrack Track(int id);
+    float MasterVolume { get; }
 
-    ITrack Track(string name);
+    float MasterPan { get; }
+
+    bool TryGetTrack(int id, out ITrack track);
+
+    bool TryGetTrack(string name, out ITrack track);
+
+    bool? GetState(Dictionary<string, Dictionary<string, JsonElement>> state);
+
+    void SetState(Dictionary<string, Dictionary<string, JsonElement>> state);
 }

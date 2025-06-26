@@ -1,0 +1,29 @@
+{
+  "name": "dmx",
+  "type": "dmxController",
+  "settings": {
+    "portName": "COM3",
+    "devices": [
+      {
+        "name": "parLeft",
+        "startChannel": 1,
+        "type": "par"
+      },
+      {
+        "name": "parRight",
+        "startChannel": 7,
+        "type": "par"
+      },
+      {
+        "name": "movingHeadLeft",
+        "startChannel": 13,
+        "type": "movingHead"
+      },
+      {
+        "name": "movingHeadRight",
+        "startChannel": 27,
+        "type": "movingHead"
+      }
+    ]
+  }
+}

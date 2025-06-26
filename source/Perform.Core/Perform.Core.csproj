@@ -1,22 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Perform</RootNamespace>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Perform.DMX\Perform.DMX.csproj" />
+    <Compile Remove="Model\Osc\**" />
+    <EmbeddedResource Remove="Model\Osc\**" />
+    <None Remove="Model\Osc\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Model\Osc\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="SharpHook" Version="3.0.2" />
+    <PackageReference Include="MediatR" Version="12.5.0" />
   </ItemGroup>
 
 </Project>

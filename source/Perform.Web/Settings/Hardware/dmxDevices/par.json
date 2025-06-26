@@ -1,0 +1,46 @@
+{
+  "name": "par",
+  "addresses": {
+    "master": {
+      "address": 1,
+      "range": [ 0, 255 ],
+      "default": 255
+    },
+    "r": {
+      "address": 2,
+      "range": [ 0, 255 ],
+      "default": 0
+    },
+    "g": {
+      "address": 3,
+      "range": [ 0, 255 ],
+      "default": 0
+    },
+    "b": {
+      "address": 4,
+      "range": [ 0, 255 ],
+      "default": 0
+    },
+    "strobe": {
+      "address": 5,
+      "range": [ 0, 255 ],
+      "default": 0
+    },
+    "gradient": {
+      "address": 6,
+      "range": [ 61, 110 ]
+    },
+    "pulse": {
+      "address": 6,
+      "range": [ 111, 160 ]
+    },
+    "jump": {
+      "address": 6,
+      "range": [ 161, 210 ]
+    },
+    "audio": {
+      "address": 6,
+      "range": [ 211, 255 ]
+    }
+  }
+}

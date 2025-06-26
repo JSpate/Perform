@@ -4,5 +4,7 @@ public interface IFx
 {
     public int Id { get; }
 
-    public string Preset { get; set; }
+    public string? Preset { get; set; }
+
+    IFxParameter Parameter(int fxId);
 }

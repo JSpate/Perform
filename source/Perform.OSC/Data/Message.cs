@@ -2,19 +2,18 @@
 
 namespace Perform.OSC.Data;
 
-public class Message : Packet
+public class Message(string address, string message, params object?[] args) : Packet
 {
-    public Message(string address, params object?[] args)
-    {
-        Address = address;
-        Arguments = new List<object?>(args);
-    }
+    public Address Address = address;
 
-    public Address Address;
-
-    public List<object?> Arguments;
+    public List<object?> Arguments = new(args);
 
     public bool IsProcessed { get; set; }
+
+    public override string ToString()
+    {
+        return message;
+    }
 
     public override byte[] GetBytes()
     {

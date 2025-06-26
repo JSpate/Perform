@@ -1,0 +1,146 @@
+﻿body {
+    background-color: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    font-size: 180%;
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+select {
+    background-color: #fff;
+    color: #000;
+    font-size: 180%;
+    margin: 10px 0;
+}
+
+button {
+    width: auto;
+    min-width: 200px;
+    border: 1px solid gray;
+    border-radius: 7%;
+    margin: 10px;
+    padding: 10px;
+    font-size: 130%;
+    background-color: #fff;
+    color: #000;
+}
+
+    button:disabled {
+        background-color: #555;
+        color: #999;
+        border: 1px solid #777;
+    }
+
+.buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 10px;
+    margin: 20px 0;
+    width: 100%;
+    max-width: 1000px;
+}
+
+.description {
+    margin: 0 0 20px 0;
+}
+
+.stomp {
+    position: relative;
+    border: 2px solid #fff;
+    border-radius: 10px;
+    padding: 20px;
+    background-color: #333;
+}
+
+    .stomp .light {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: #555;
+    }
+
+    .stomp.active .light {
+        background-color: #0f0;
+    }
+
+.lyrics {
+    font-size: 1em;
+    margin: 0 0 20px 0;
+    height: 8em;
+    transition: opacity 0.3s ease-in-out;
+}
+
+#light {
+    opacity: 0;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #0f0;
+}
+
+button.danger {
+    background-color: #f00;
+    color: white;
+}
+
+#errorOverlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    padding: 20px;
+    background-color: rgba(50, 50, 50, 0.9);
+    color: red;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5em;
+    z-index: 1000;
+    display: none;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    body {
+        font-size: 150%;
+    }
+
+    button {
+        font-size: 120%;
+        min-width: 150px;
+        padding: 8px;
+    }
+
+    select {
+        font-size: 150%;
+    }
+
+    .buttons {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(4, 1fr);
+    }
+}
+
+#select, #show {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}

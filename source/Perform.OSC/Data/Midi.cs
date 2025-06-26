@@ -1,19 +1,11 @@
 ﻿namespace Perform.OSC.Data;
 
-public struct Midi
+public struct Midi(byte port, byte status, byte data1, byte data2)
 {
-    public byte Port;
-    public byte Status;
-    public byte Data1;
-    public byte Data2;
-
-    public Midi(byte port, byte status, byte data1, byte data2)
-    {
-        Port = port;
-        Status = status;
-        Data1 = data1;
-        Data2 = data2;
-    }
+    public byte Port = port;
+    public byte Status = status;
+    public byte Data1 = data1;
+    public byte Data2 = data2;
 
     public override bool Equals(object? obj)
     {

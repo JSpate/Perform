@@ -1,0 +1,9 @@
+{
+  "name": "FootCtrl",
+  "type": "midiController",
+  "settings": {
+    "faileoverDevice": "UsbMidi",
+    "longPress": 1000,
+    "controlCodes": [ 0, 1, 2, 3 ]
+  }
+}

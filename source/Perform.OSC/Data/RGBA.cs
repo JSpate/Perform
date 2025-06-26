@@ -1,19 +1,11 @@
 ﻿namespace Perform.OSC.Data;
 
-public struct Rgba
+public struct Rgba(byte red, byte green, byte blue, byte alpha)
 {
-    public byte R;
-    public byte G;
-    public byte B;
-    public byte A;
-
-    public Rgba(byte red, byte green, byte blue, byte alpha)
-    {
-        R = red;
-        G = green;
-        B = blue;
-        A = alpha;
-    }
+    public byte R = red;
+    public byte G = green;
+    public byte B = blue;
+    public byte A = alpha;
 
     public override bool Equals(object? obj)
     {

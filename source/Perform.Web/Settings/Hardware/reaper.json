@@ -1,0 +1,24 @@
+{
+  "name": "reaper",
+  "type": "reaper",
+  "settings": {
+    "ipAddress": "127.0.0.1",
+    "sendPort": 8000,
+    "receivePort": 8001,
+    "fileName":  "./Reaper/Live.RPP"
+    "tracks": {
+      "Ibanez": {
+        "armed": false,
+        "pan": 0.5
+      },
+      "Ltd": {
+        "armed": false,
+        "pan": 0.5
+      },
+      "Tele": {
+        "armed": false,
+        "pan": 0.5
+      }
+    }
+  }
+}

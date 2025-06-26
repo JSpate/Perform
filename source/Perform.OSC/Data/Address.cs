@@ -37,4 +37,6 @@ public readonly struct Address : IEnumerable<string>
     {
         return _parts.GetEnumerator();
     }
+
+    public int Count => _parts.Length;
 }

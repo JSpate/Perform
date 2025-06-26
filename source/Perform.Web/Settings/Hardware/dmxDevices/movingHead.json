@@ -1,0 +1,105 @@
+{
+  "name": "movingHead",
+  "addresses": {
+    "pan": {
+      "address": 1,
+      "range": [ 0, 65535 ],
+      "description": "Pan"
+    },
+    "tilt": {
+      "address": 3,
+      "range": [ 0, 65535 ],
+      "description": "Tilt"
+    },
+    "speed": {
+      "address": 5,
+      "range": [ 0, 255 ],
+      "description": "Pan / Tilt speed"
+    },
+    "dimmerStrobeDimmer": {
+      "address": 6,
+      "range": [ 8, 134 ],
+      "description": "Dimmer"
+    },
+    "dimmerStrobeStrobe": {
+      "address": 6,
+      "range": [ 135, 239 ],
+      "description": "Strobe 0Hz to 40Hz"
+    },
+    "dimmerStrobeOpen": {
+      "address": 6,
+      "range": [ 240, 255 ],
+      "description": "Open"
+    },
+    "r": {
+      "address": 7,
+      "range": [ 0, 255 ],
+      "description": "Red"
+    },
+    "g": {
+      "address": 8,
+      "range": [ 0, 255 ],
+      "description": "Green"
+    },
+    "b": {
+      "address": 9,
+      "range": [ 0, 255 ],
+      "description": "Blue"
+    },
+    "w": {
+      "address": 10,
+      "range": [ 0, 255 ],
+      "description": "White"
+    },
+    "colorMixMixed": {
+      "address": 11,
+      "range": [ 0, 223 ],
+      "description": "Color Mixed"
+    },
+    "colorMixGradient": {
+      "address": 11,
+      "range": [ 224, 240 ],
+      "description": "Color gradient from slow to fast"
+    },
+    "colorMixJump": {
+      "address": 11,
+      "range": [ 241, 255 ],
+      "description": "Color jump from slow to fast"
+    },
+    "colorSpeed": {
+      "address": 12,
+      "range": [ 0, 255 ],
+      "description": "Color speed"
+    },
+    "movementDMX": {
+      "address": 13,
+      "range": [ 0, 3 ],
+      "description": "DMX control"
+    },
+    "movementAuto1": {
+      "address": 13,
+      "range": [ 4, 102 ],
+      "description": "Auto 1"
+    },
+    "movementAuto2": {
+      "address": 13,
+      "range": [ 103, 152 ],
+      "description": "Auto 2"
+    },
+    "movementAuto3": {
+      "address": 13,
+      "range": [ 153, 203 ],
+      "description": "Auto 3"
+    },
+    "movementSound": {
+      "address": 13,
+      "range": [ 204, 255 ],
+      "description": "Sound"
+    },
+    "reset": {
+      "address": 14,
+      "range": [ 255 ],
+      "description": "Factory Reset"
+    }
+  }
+}

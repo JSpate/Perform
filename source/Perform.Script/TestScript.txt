@@ -5,7 +5,7 @@ const MaxChaseSteps = 4;
 // At the start of the song, set initial color and movement
 on(StartSong) {
     isSongActive = true;
-    if (isAvailable(dmx)) {
+    if (isAvailable(dmx) && isSongActive) {
         set(DMX.MovingHeadLeft, DMX.MovingHeadRight) {
             pan = 32768;
             tilt = 32768;
@@ -39,6 +39,24 @@ on(EndSong) {
         w = 0;
     }
     Log.Info("Show ended: all lights off");
+} 
+loop {
+	set(reaper.track1) {
+	    armed = 1;
+    }
+
+	foreach(var x in reaper) {
+		x.armed = 1;
+        x.fx.param[2] = 0;
+	}
+}
+finally {
+    foreach(var track in reaper) {
+        if(track.armed > 0) {
+            track.armed = 0;
+            Log.Info("Track " + track.name + " armed state reset.");
+        }
+    }
 }
 
 // At bar 4, fade moving heads to blue and start auto movement

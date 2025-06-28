@@ -43,7 +43,7 @@ public static class InMemoryCompiler
             var errors = string.Join(Environment.NewLine, result.Diagnostics
                 .Where(d => d.Severity == DiagnosticSeverity.Error)
                 .Select(d => d.ToString()));
-            throw new Exception("Compilation failed:\n" + errors);
+             throw new Exception("Compilation failed:\n" + errors);
         }
 
         ms.Seek(0, SeekOrigin.Begin);

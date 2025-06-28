@@ -1,4 +1,6 @@
 ﻿using System.Text;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Perform.Script;
 
@@ -11,14 +13,49 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
     private readonly List<string> _moduleVars = new();
     private int _eventHandlerCounter;
 
-    // Track loop nesting for context-sensitive continue
     private int _loopNestingLevel;
 
-    // --- Function fields for Lites/Motion ---
     private readonly List<string> _functionFields = new();
     private readonly List<string> _functionInitializations = new();
     private readonly List<string> _functionLoops = new();
     private int _functionCounter;
+
+    private readonly Stack<HashSet<string>> _localVars = new();
+    private readonly Stack<(string loopVar, string collectionRoot)> _foreachContext = new();
+
+    private string RewriteDottedId(ShowScriptParser.DottedIDContext dotted)
+    {
+        var ids = dotted.idWithIndex();
+        if (_foreachContext.Count > 0 && ids.Length == 2)
+        {
+            var (loopVar, collectionRoot) = _foreachContext.Peek();
+            if (ids[0].GetText() == loopVar)
+            {
+                var property = ids[1].GetText();
+                var parent = dotted.Parent;
+                bool isAssignment = parent is ShowScriptParser.AssignmentContext assignCtx && assignCtx.dottedID() == dotted;
+                if (!isAssignment)
+                {
+                    var path = $"{collectionRoot}.{{{loopVar}}}.{property}";
+                    var typePath = $"{collectionRoot}.*.{property}";
+                    return $"showScript.Get<{GetTypeForPath(typePath)}>($\"{path}\")";
+                }
+            }
+        }
+        if (ids.Length > 1)
+        {
+            var first = ids[0].GetText();
+            var rest = ids.Skip(1).Select(id => id.GetText()).ToArray();
+            if (_localVars.Any() && _localVars.Any(set => set.Contains(first)))
+            {
+                var expr = first;
+                foreach (var prop in rest)
+                    expr = $"{expr}.Get(\"{prop}\")";
+                return expr;
+            }
+        }
+        return dotted.GetText();
+    }
 
     public override string VisitAdditiveExpr(ShowScriptParser.AdditiveExprContext context)
     {
@@ -77,7 +114,6 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
         else if (context.expr() != null && context.expr().Length > 1)
             inc = Visit(context.expr(1));
 
-        // Enter nested loop
         _loopNestingLevel++;
         var body = Visit(context.loopStatementsBlock());
         _loopNestingLevel--;
@@ -87,30 +123,111 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
         return $"for ({init}; {cond}; {inc}) {bodyBlock}";
     }
 
+    public override string VisitForeachLoopStatement(ShowScriptParser.ForeachLoopStatementContext context)
+    {
+        var varName = context.ID().GetText();
+        var collectionStr = GetDottedIdString(context.dottedID());
+        var type = GetTypeForPath(collectionStr);
+        var collection = $"showScript.Get<{type}>(\"{collectionStr}\")";
+        _foreachContext.Push((varName, collectionStr));
+        var body = Visit(context.loopStatementsBlock());
+        _foreachContext.Pop();
+        return $"foreach (var {varName} in {collection}) {body}";
+    }
+
+    public override string VisitForeachStatement(ShowScriptParser.ForeachStatementContext context)
+    {
+        var varName = context.ID().GetText();
+        var collectionStr = GetDottedIdString(context.dottedID());
+        var type = GetTypeForPath(collectionStr);
+        var collection = $"showScript.Get<{type}>(\"{collectionStr}\")";
+        _foreachContext.Push((varName, collectionStr));
+        var body = Visit(context.block());
+        _foreachContext.Pop();
+        return $"foreach (var {varName} in {collection}) {body}";
+    }
+
     public override string VisitEndLoopStatement(ShowScriptParser.EndLoopStatementContext context)
     {
-        // Set status to EndLoop and return from Loop()
         return "_status = ScriptLoopStatus.EndLoop;\nreturn;";
     }
 
     public override string VisitArray(ShowScriptParser.ArrayContext context)
     {
         var tuples = context.tuple().Select(Visit).ToArray();
-        return $"new[] {{ {string.Join(", ", tuples)} }}";
+        return $"new List<int[]> {{ {string.Join(", ", tuples)} }}";
     }
 
     public override string VisitAssignment(ShowScriptParser.AssignmentContext context)
     {
-        var name = context.ID().GetText();
-        var expr = Visit(context.expr());
-        return $"{name} = {expr};";
+        var dotted = context.dottedID();
+        var ids = dotted.idWithIndex();
+        var exprText = Visit(context.expr());
+
+        if (_foreachContext.Count > 0 && ids.Length >= 2)
+        {
+            var (loopVar, collectionRoot) = _foreachContext.Peek();
+            if (ids[0].GetText() == loopVar)
+            {
+                var propertyPath = string.Join(".", ids.Skip(1).Select(id => id.GetText()));
+                var path = $"{collectionRoot}.{{{loopVar}}}.{propertyPath}";
+                var typePath = $"{collectionRoot}.*.{propertyPath}";
+                return $"showScript.Set<{GetTypeForPath(typePath)}>($\"{path}\", {exprText});";
+            }
+        }
+
+        if (ids.Length > 1)
+        {
+            var first = ids[0].GetText();
+            var rest = ids.Skip(1).Select(id => id.GetText()).ToArray();
+            if (_localVars.Any() && _localVars.Any(set => set.Contains(first)))
+            {
+                if (rest.Length == 1)
+                    return $"{first}.Set(\"{rest[0]}\") = {exprText};";
+                var expr = first;
+                for (int i = 0; i < rest.Length - 1; i++)
+                    expr = $"{expr}.Get(\"{rest[i]}\")";
+                return $"{expr}.Set(\"{rest.Last()}\") = {exprText};";
+            }
+        }
+        var name = RewriteDottedId(dotted);
+        return $"{name} = {exprText};";
     }
 
     public override string VisitAssignmentNoSemi(ShowScriptParser.AssignmentNoSemiContext context)
     {
-        var name = context.ID().GetText();
-        var expr = Visit(context.expr());
-        return $"{name} = {expr}";
+        var dotted = context.dottedID();
+        var ids = dotted.idWithIndex();
+        var exprText = Visit(context.expr());
+
+        if (_foreachContext.Count > 0 && ids.Length >= 2)
+        {
+            var (loopVar, collectionRoot) = _foreachContext.Peek();
+            if (ids[0].GetText() == loopVar)
+            {
+                var propertyPath = string.Join(".", ids.Skip(1).Select(id => id.GetText()));
+                var path = $"{collectionRoot}.{{{loopVar}}}.{propertyPath}";
+                var typePath = $"{collectionRoot}.*.{propertyPath}";
+                return $"showScript.Set<{GetTypeForPath(typePath)}>($\"{path}\", {exprText})";
+            }
+        }
+
+        if (ids.Length > 1)
+        {
+            var first = ids[0].GetText();
+            var rest = ids.Skip(1).Select(id => id.GetText()).ToArray();
+            if (_localVars.Any() && _localVars.Any(set => set.Contains(first)))
+            {
+                if (rest.Length == 1)
+                    return $"{first}.Set(\"{rest[0]}\") = {exprText}";
+                var expr = first;
+                for (int i = 0; i < rest.Length - 1; i++)
+                    expr = $"{expr}.Get(\"{rest[i]}\")";
+                return $"{expr}.Set(\"{rest.Last()}\") = {exprText}";
+            }
+        }
+        var name = RewriteDottedId(dotted);
+        return $"{name} = {exprText}";
     }
 
     public override string VisitTryStatement(ShowScriptParser.TryStatementContext context)
@@ -136,6 +253,7 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
 
     public override string VisitBlock(ShowScriptParser.BlockContext context)
     {
+        _localVars.Push(new HashSet<string>());
         var sb = new StringBuilder();
         sb.AppendLine("{");
         foreach (var stmt in context.statement())
@@ -150,11 +268,13 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
             }
         }
         sb.Append("}");
+        _localVars.Pop();
         return sb.ToString();
     }
 
     public override string VisitLoopStatementsBlock(ShowScriptParser.LoopStatementsBlockContext context)
     {
+        _localVars.Push(new HashSet<string>());
         var sb = new StringBuilder();
         sb.AppendLine("{");
         foreach (var stmt in context.loopStatement())
@@ -169,6 +289,7 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
             }
         }
         sb.Append("}");
+        _localVars.Pop();
         return sb.ToString();
     }
 
@@ -179,8 +300,6 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
 
     public override string VisitContinueStatement(ShowScriptParser.ContinueStatementContext context)
     {
-        // Top-level event loop: return;
-        // Nested loop: continue;
         return _loopNestingLevel == 0
             ? "return;"
             : "continue;";
@@ -232,9 +351,7 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
 
     public override string VisitDottedID(ShowScriptParser.DottedIDContext context)
     {
-        var ids = new List<string>();
-        CollectDottedIds(context, ids);
-        return string.Join(".", ids);
+        return RewriteDottedId(context);
     }
 
     public override string VisitEqualityExpr(ShowScriptParser.EqualityExprContext context)
@@ -248,7 +365,6 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
     public override string VisitEventBlock(ShowScriptParser.EventBlockContext context)
     {
         _inFunctionOrHandler = true;
-        // Reset function state for each handler
         _functionFields.Clear();
         _functionInitializations.Clear();
         _functionLoops.Clear();
@@ -269,10 +385,8 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
             }
         }
 
-        // Main block (Initialize)
         var blockCode = Visit(context.block());
 
-        // Flatten block if it's a single { ... }
         string flatBlockCode;
         var trimmedBlock = blockCode.Trim();
         if (trimmedBlock.StartsWith("{") && trimmedBlock.EndsWith("}"))
@@ -284,38 +398,31 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
             flatBlockCode = trimmedBlock;
         }
 
-        // Loop block (Loop)
         string loopBlockCode;
         bool hasLoopContent = false;
         if (context.loopBlock() != null)
         {
-            // Top-level event loop: set nesting to 0
             _loopNestingLevel = 0;
             var loopBody = Visit(context.loopBlock());
 
-            // Always wrap the loop body in braces if not already
             var loopBodyBlock = loopBody.Trim();
             if (!loopBodyBlock.StartsWith("{"))
                 loopBodyBlock = "{\n" + loopBodyBlock + "\n}";
 
-            // Inject functionLoops at the start of Loop()
             var loopLines = string.Join("\n", _functionLoops.Select(l => "        " + l));
             if (!string.IsNullOrWhiteSpace(loopLines))
             {
-                // Insert after opening brace
                 var braceIdx = loopBodyBlock.IndexOf('{') + 1;
                 loopBodyBlock = loopBodyBlock.Insert(braceIdx, "\n" + loopLines + "\n");
             }
 
-            // Remove any return ScriptLoopResult.*; lines (handled by status/return now)
             var lines = loopBodyBlock.Split('\n')
                 .Where(line => !line.TrimStart().StartsWith("return ScriptLoopResult.Continue;") &&
                                !line.TrimStart().StartsWith("return ScriptLoopResult.EndLoop;"))
                 .ToArray();
             loopBodyBlock = string.Join("\n", lines);
 
-            // Check if there is any content in the loop
-            hasLoopContent = lines.Any(line => !string.IsNullOrWhiteSpace(line) && !line.Trim().Equals("{") && !line.Trim().Equals("}"));
+            hasLoopContent = lines.Any(line => !line.Trim().Equals("{") && !line.Trim().Equals("}"));
 
             loopBlockCode = $@"
     public void Loop()
@@ -324,7 +431,6 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
         }
         else
         {
-            // If no loop block, still call function loops
             var loopLines = string.Join("\n", _functionLoops.Select(l => "        " + l));
             hasLoopContent = !string.IsNullOrWhiteSpace(loopLines);
             loopBlockCode = $@"
@@ -335,27 +441,44 @@ public class ShowScriptToCSharpVisitor(ShowScript showScript) : ShowScriptBaseVi
 ";
         }
 
-        // Status field and property
+        string finallyBlockCode;
+        if (context.loopFinallyBlock() != null)
+        {
+            var finallyBody = Visit(context.loopFinallyBlock());
+            var trimmedFinally = finallyBody.Trim();
+            if (trimmedFinally.StartsWith("finally"))
+                trimmedFinally = trimmedFinally.Substring("finally".Length).Trim();
+            if (trimmedFinally.StartsWith("{") && trimmedFinally.EndsWith("}"))
+                trimmedFinally = trimmedFinally.Substring(1, trimmedFinally.Length - 2).Trim('\r', '\n');
+            finallyBlockCode = $@"
+    public void Finally()
+    {{
+{IndentBlock(trimmedFinally, 1)}
+        _status = ScriptLoopStatus.Finished;
+    }}
+";
+        }
+        else
+        {
+            finallyBlockCode = $@"
+    public void Finally()
+    {{
+        _status = ScriptLoopStatus.Finished;
+    }}
+";
+        }
+
         var statusInit = hasLoopContent ? "ScriptLoopStatus.Continue" : "ScriptLoopStatus.EndLoop";
         var statusField = $"private ScriptLoopStatus _status = {statusInit};";
         var statusProperty = @"
     public ScriptLoopStatus Status => _status;
 ";
 
-        // Handler class
         var handlerClass = $@"
-private class {handlerClassName} : IScriptEventHandler
+private class {handlerClassName}(ShowScript showScript, ILogger logger) : IScriptEventHandler
 {{
-    private readonly ShowScript _showScript;
-    private readonly ILogger _logger;
 {(_functionFields.Count > 0 ? "    " + string.Join("\n    ", _functionFields) : "")}
     {statusField}
-
-    public {handlerClassName}(ShowScript showScript, ILogger logger)
-    {{
-        _showScript = showScript;
-        _logger = logger;
-    }}
 
     public void Initialize()
     {{
@@ -363,6 +486,7 @@ private class {handlerClassName} : IScriptEventHandler
 {(_functionInitializations.Count > 0 ? IndentBlock(string.Join("\n", _functionInitializations), 1) : "")}
     }}
 {loopBlockCode}
+{finallyBlockCode}
 {statusProperty}
 }}
 ";
@@ -379,7 +503,6 @@ private class {handlerClassName} : IScriptEventHandler
 
     public override string VisitLoopBlock(ShowScriptParser.LoopBlockContext context)
     {
-        // Use loopStatementsBlock for the Loop() method body
         var loopBody = Visit(context.loopStatementsBlock());
         return loopBody;
     }
@@ -409,7 +532,6 @@ private class {handlerClassName} : IScriptEventHandler
         else if (context.expr(1) != null)
             inc = Visit(context.expr(1));
 
-        // Enter nested loop
         _loopNestingLevel++;
         var body = Visit(context.block());
         _loopNestingLevel--;
@@ -430,15 +552,14 @@ private class {handlerClassName} : IScriptEventHandler
     {
         var expr = context.expr();
         var arg = TryGetDottedIdOrIdAsString(expr) ?? Visit(expr);
-        var type = showScript.TypeFor(arg);
-        return $"_showScript.Get<{type}>({arg})";
+        return $"showScript.Get<{GetTypeForPath(arg)}>({arg})";
     }
 
     public override string VisitGlobalIsAvailableCall(ShowScriptParser.GlobalIsAvailableCallContext context)
     {
         var expr = context.expr();
         var arg = TryGetDottedIdOrIdAsString(expr) ?? Visit(expr);
-        return $"_showScript.IsAvailable({arg})";
+        return $"showScript.IsAvailable({arg})";
     }
 
     public override string VisitIfStatement(ShowScriptParser.IfStatementContext context)
@@ -475,6 +596,8 @@ private class {handlerClassName} : IScriptEventHandler
     {
         var name = context.ID().GetText();
         var expr = Visit(context.expr());
+        if (_localVars.Count > 0)
+            _localVars.Peek().Add(name);
         var code = $"private static dynamic {name} = {expr};";
         if (!_inFunctionOrHandler)
         {
@@ -488,6 +611,8 @@ private class {handlerClassName} : IScriptEventHandler
     {
         var name = context.ID().GetText();
         var expr = Visit(context.expr());
+        if (_localVars.Count > 0)
+            _localVars.Peek().Add(name);
         return $"var {name} = {expr}";
     }
 
@@ -505,17 +630,15 @@ private class {handlerClassName} : IScriptEventHandler
         var funcName = context.litesFunction().Start.Text;
         var className = $"Perform.Scripting.Functions.{funcName}";
 
-        // Extract arguments inside the parentheses
         var funcText = context.litesFunction().GetText();
         var argsStart = funcText.IndexOf('(');
         var args = argsStart >= 0 ? funcText.Substring(argsStart + 1, funcText.Length - argsStart - 2) : "";
 
         var fieldName = $"_function{++_functionCounter:D4}";
-        _functionFields.Add($"private IDeviceScriptFunction {fieldName};");
-        _functionInitializations.Add($"{fieldName} = new {className}({args});\n{fieldName}.Initialize(_showScript, {litesArray});");
-        _functionLoops.Add($"if (!{fieldName}.IsFinished) {fieldName}.Loop();");
+        _functionFields.Add($"private IDeviceScriptFunction? {fieldName};");
+        _functionInitializations.Add($"{fieldName} = new {className}({args});\n{fieldName}.Initialize(showScript, {litesArray});");
+        _functionLoops.Add($"if ({fieldName} is {{ IsFinished: false }}) {fieldName}.Loop();");
 
-        // Do not emit the old call
         return "";
     }
 
@@ -533,17 +656,15 @@ private class {handlerClassName} : IScriptEventHandler
         var funcName = context.motionFunction().Start.Text;
         var className = $"Perform.Scripting.Functions.{funcName}";
 
-        // Extract arguments inside the parentheses
         var funcText = context.motionFunction().GetText();
         var argsStart = funcText.IndexOf('(');
         var args = argsStart >= 0 ? funcText.Substring(argsStart + 1, funcText.Length - argsStart - 2) : "";
 
         var fieldName = $"_function{++_functionCounter:D4}";
-        _functionFields.Add($"private IDeviceScriptFunction {fieldName};");
-        _functionInitializations.Add($"{fieldName} = new {className}({args});\n{fieldName}.Initialize(_showScript, {motionArray});");
-        _functionLoops.Add($"if (!{fieldName}.IsFinished) {fieldName}.Loop();");
+        _functionFields.Add($"private IDeviceScriptFunction? {fieldName};");
+        _functionInitializations.Add($"{fieldName} = new {className}({args});\n{fieldName}.Initialize(showScript, {motionArray});");
+        _functionLoops.Add($"if ({fieldName} is {{ IsFinished: false }}) {fieldName}.Loop();");
 
-        // Do not emit the old call
         return "";
     }
 
@@ -566,7 +687,7 @@ private class {handlerClassName} : IScriptEventHandler
         };
 
         var arg = Visit(context.expr());
-        return $"_logger.{logCall}({arg})";
+        return $"logger.{logCall}({arg})";
     }
 
     public override string VisitMathCall(ShowScriptParser.MathCallContext context)
@@ -597,20 +718,38 @@ private class {handlerClassName} : IScriptEventHandler
             {
                 var exprText = Visit(context.expr(exprIndex));
                 exprIndex++;
-
-                if (int.TryParse(exprText, out var tupleIndex) && tupleIndex is >= 0 and <= 7)
-                {
-                    result = $"{result}.Item{tupleIndex + 1}";
-                }
-                else
-                {
-                    result = $"{result}[{exprText}]";
-                }
+                result = $"{result}[{exprText}]";
                 i += 3;
             }
             else if (child.GetText() == ".")
             {
                 var next = context.GetChild(i + 1);
+
+                if (_foreachContext.Count > 0 && next is Antlr4.Runtime.Tree.ITerminalNode terminalNode)
+                {
+                    var property = terminalNode.GetText();
+                    var (loopVar, collectionRoot) = _foreachContext.Peek();
+
+                    if (result.Trim() == loopVar)
+                    {
+                        var parent = context.Parent;
+                        bool isAssignment = false;
+                        if (parent is ShowScriptParser.AssignmentContext assignCtx && assignCtx.dottedID() != null)
+                        {
+                            var ids = assignCtx.dottedID().idWithIndex();
+                            if (ids.Length == 2 && ids[0].GetText() == loopVar && ids[1].GetText() == property)
+                                isAssignment = true;
+                        }
+                        if (!isAssignment)
+                        {
+                            var typePath = $"{collectionRoot}.*.{property}";
+                            result = $"showScript.Get<{GetTypeForPath(typePath)}>($\"{collectionRoot}.{{{loopVar}}}.{property}\")";
+                            i += 2;
+                            continue;
+                        }
+                    }
+                }
+
                 if (next.GetText() == "Length")
                 {
                     result = $"{result}.Length";
@@ -685,6 +824,7 @@ private class {handlerClassName} : IScriptEventHandler
         sb.AppendLine("using Perform.Model;");
         sb.AppendLine("using Perform.Interfaces;");
         sb.AppendLine("using System;");
+        sb.AppendLine("using System.Collections.Generic;");
         sb.AppendLine("using System.Threading;");
         sb.AppendLine("using System.Threading.Tasks;");
         sb.AppendLine("using Math = Perform.Scripting.MathMethods;");
@@ -694,7 +834,6 @@ private class {handlerClassName} : IScriptEventHandler
         sb.AppendLine("    private readonly ShowScript _showScript;");
         sb.AppendLine("    private readonly ILogger _logger;");
         sb.AppendLine();
-        // Output module-level constants and variables as private static
         foreach (var c in _moduleConstants)
             sb.AppendLine("    " + c);
         foreach (var v in _moduleVars)
@@ -739,7 +878,7 @@ private class {handlerClassName} : IScriptEventHandler
                 var property = assignment.ID().GetText();
                 var value = Visit(assignment.expr());
                 var arg = $"{devicePath}.{property}";
-                sb.AppendLine($"_showScript.Set(\"{arg}\", {value});");
+                sb.AppendLine($"showScript.Set<{GetTypeForPath(arg)}>(\"{arg}\", {value});");
             }
         }
 
@@ -748,7 +887,7 @@ private class {handlerClassName} : IScriptEventHandler
 
     public override string VisitSongCall(ShowScriptParser.SongCallContext context)
     {
-        return $"_showScript.CurrentSong.{context.songFunction().GetText().TrimEnd('(', ')')}";
+        return $"showScript.CurrentSong.{context.songFunction().GetText().TrimEnd('(', ')')}";
     }
 
     public override string VisitTernaryExpr(ShowScriptParser.TernaryExprContext context)
@@ -766,7 +905,7 @@ private class {handlerClassName} : IScriptEventHandler
     public override string VisitTuple(ShowScriptParser.TupleContext context)
     {
         var values = context.value().Select(Visit).ToArray();
-        return $"({string.Join(", ", values)})";
+        return $"new[]{{{string.Join(", ", values)}}}";
     }
 
     public override string VisitUnaryExpr(ShowScriptParser.UnaryExprContext context)
@@ -785,7 +924,7 @@ private class {handlerClassName} : IScriptEventHandler
         if (context.FLOAT() != null) return context.FLOAT().GetText();
         if (context.STRING() != null) return context.STRING().GetText();
         if (context.ID() != null) return context.ID().GetText();
-        if (context.dottedID() != null) return Visit(context.dottedID());
+        if (context.dottedID() != null) return RewriteDottedId(context.dottedID());
         if (context.array() != null) return Visit(context.array());
         if (context.tuple() != null) return Visit(context.tuple());
         return base.VisitValue(context);
@@ -796,6 +935,8 @@ private class {handlerClassName} : IScriptEventHandler
         var type = MapType(context.typeName().GetText());
         var name = context.ID().GetText();
         var expr = Visit(context.expr());
+        if (_localVars.Count > 0)
+            _localVars.Peek().Add(name);
         return $"{type} {name} = {expr}";
     }
 
@@ -804,6 +945,8 @@ private class {handlerClassName} : IScriptEventHandler
         var type = MapType(context.typeName().GetText());
         var name = context.ID().GetText();
         var expr = Visit(context.expr());
+        if (_localVars.Count > 0)
+            _localVars.Peek().Add(name);
         var code = $"private static {type} {name} = {expr};";
         if (!_inFunctionOrHandler)
         {
@@ -815,7 +958,7 @@ private class {handlerClassName} : IScriptEventHandler
 
     private static void CollectDottedIds(ShowScriptParser.DottedIDContext ctx, List<string> ids)
     {
-        ids.AddRange(ctx.ID().Select(id => id.GetText()));
+        ids.AddRange(ctx.idWithIndex().Select(id => id.GetText()));
     }
 
     private string GetDottedIdString(ShowScriptParser.DottedIDContext ctx)
@@ -923,5 +1066,10 @@ private class {handlerClassName} : IScriptEventHandler
         if (node.ChildCount == 1)
             return Visit(node.GetChild(0));
         return string.Join(" ", Enumerable.Range(0, node.ChildCount).Select(i => Visit(node.GetChild(i))));
+    }
+
+    private string GetTypeForPath(string path)
+    {
+        return showScript.TypeFor(path);
     }
 }

@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+﻿using System.Collections;
+using System.Text.Json;
+using Perform.Interfaces;
 using Perform.Model;
 using Perform.Model.Console;
 using Perform.OSC;
@@ -531,5 +533,25 @@ public sealed class Reaper : IMidiConsole
                 Value = newValue;
             }
         }
+    }
+
+    public IEnumerator<IDeviceItem> GetEnumerator()
+    {
+        throw new NotImplementedException();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    public T Get<T>(string target)
+    {
+        throw new NotImplementedException();
+    }
+
+    public bool Set<T>(string target, T value)
+    {
+        throw new NotImplementedException();
     }
 }

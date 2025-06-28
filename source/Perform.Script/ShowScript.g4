@@ -25,9 +25,9 @@ typeName
     | 'Device'
     ;
 
-// Event blocks: on(EventType(args)) when(...) { ... } loop { ... }
+// Event blocks: on(EventType(args)) while(...) when(...) { ... } loop { ... } finally { ... }
 eventBlock
-    : 'on' LPAREN eventTypeAndArgs RPAREN whenBlock? block loopBlock?
+    : 'on' LPAREN eventTypeAndArgs RPAREN whileBlock? whenBlock? block loopBlock? loopFinallyBlock?
     ;
 
 eventTypeAndArgs
@@ -63,6 +63,11 @@ eventArg
     | ID ASSIGN dottedID
     ;
 
+// Optional while block: while(condition)
+whileBlock
+    : 'while' LPAREN expr RPAREN
+    ;
+
 // Optional when block: when(condition)
 whenBlock
     : 'when' LPAREN expr RPAREN
@@ -71,6 +76,11 @@ whenBlock
 // Loop block and recursive loop statements
 loopBlock
     : 'loop' loopStatementsBlock
+    ;
+
+// Optional finally block for eventBlock
+loopFinallyBlock
+    : 'finally' block
     ;
 
 loopStatementsBlock
@@ -84,6 +94,7 @@ loopStatement
     | letStatement
     | ifLoopStatement
     | forLoopStatement
+    | foreachLoopStatement
     | breakStatement
     | continueStatement
     | returnStatement
@@ -101,6 +112,11 @@ ifLoopStatement
 // For loop for loop blocks (recursive)
 forLoopStatement
     : FOR LPAREN (letStatementNoSemi | assignmentNoSemi | varDeclNoSemi)? SEMI expr? SEMI (letStatementNoSemi | assignmentNoSemi | varDeclNoSemi | expr)? RPAREN loopStatementsBlock
+    ;
+
+// Foreach loop for loop blocks (recursive)
+foreachLoopStatement
+    : FOREACH LPAREN VAR ID IN dottedID RPAREN loopStatementsBlock
     ;
 
 // Try/catch/finally for loop blocks (recursive)
@@ -126,19 +142,25 @@ block
     : '{' (statement)* '}'
     ;
 
-// Statements: device/function calls, assignment, var, if, for, try, set block
+// Statements: device/function calls, assignment, var, if, for, foreach, try, set block
 statement
     : callStatement
     | assignment
     | letStatement
     | ifStatement
     | forStatement
+    | foreachStatement
     | breakStatement
     | continueStatement
     | returnStatement
     | tryStatement
     | setBlockStatement
     | varDeclStatement
+    ;
+
+// Foreach loop for regular blocks
+foreachStatement
+    : FOREACH LPAREN VAR ID IN dottedID RPAREN block
     ;
 
 // Set block statement for batch device/group parameter assignment
@@ -163,9 +185,9 @@ letStatement
     : VAR ID ASSIGN expr SEMI
     ;
 
-// Assignment (now allowed as a statement, but not at module level)
+// Assignment (now allows dottedID on the left)
 assignment
-    : ID ASSIGN expr SEMI
+    : dottedID ASSIGN expr SEMI
     ;
 
 // Function and device calls must end with a semicolon
@@ -205,8 +227,9 @@ letStatementNoSemi
     : VAR ID ASSIGN expr
     ;
 
+// AssignmentNoSemi (now allows dottedID on the left)
 assignmentNoSemi
-    : ID ASSIGN expr
+    : dottedID ASSIGN expr
     ;
 
 varDeclNoSemi
@@ -469,9 +492,13 @@ exprString
     : STRING
     ;
 
-// Dotted identifier for file names, device paths, and function names
+// Dotted identifier for file names, device paths, and function names, now with array support
 dottedID
-    : ID (DOT ID)*
+    : idWithIndex (DOT idWithIndex)*
+    ;
+
+idWithIndex
+    : ID (LBRACK expr RBRACK)*
     ;
 
 // Values
@@ -492,7 +519,7 @@ value
 EVENT       : 'event';
 VAR         : 'var';
 CONST       : 'const';
-GROUP       : 'group'; // You may remove this if not used elsewhere
+GROUP       : 'group';
 VOID        : 'void';
 INT_TYPE    : 'int';
 FLOAT_TYPE  : 'float';
@@ -500,6 +527,8 @@ STRING_TYPE : 'string';
 IF          : 'if';
 ELSE        : 'else';
 FOR         : 'for';
+FOREACH     : 'foreach';
+IN          : 'in';
 BREAK       : 'break';
 CONTINUE    : 'continue';
 RETURN      : 'return';
@@ -545,6 +574,8 @@ NOT_OP      : '!';
 
 LPAREN      : '(';
 RPAREN      : ')';
+LBRACK      : '[';
+RBRACK      : ']';
 
 ID          : [a-zA-Z_][a-zA-Z0-9_]* ;
 FLOAT       : [0-9]+ '.' [0-9]+ ;

@@ -6,11 +6,14 @@ public interface IScriptEventHandler
 
     public void Loop();
 
+    public void Finally();
+
     public ScriptLoopStatus Status { get; }
 }
 
 public enum ScriptLoopStatus
 {
     Continue,
-    EndLoop
+    EndLoop,
+    Finished
 }

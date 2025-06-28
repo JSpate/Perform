@@ -17,16 +17,16 @@ namespace Perform
         public string TypeFor(string target)
         {
             var parts = target.Split('.', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 2)
-            {
-                return "IDeviceItem";
-            }
 
-            if (parts.Length == 3)
+            switch (parts.Length)
             {
-                return "int";
+                case 1:
+                    return "IDevice";
+                case 2:
+                    return "IDeviceItem";
+                default:
+                    return "double";
             }
-            throw new ArgumentException("Target not found in the current configuration.");
         }
 
         public bool IsAvailable(string target)

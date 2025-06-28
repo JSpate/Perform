@@ -1,8 +1,9 @@
-﻿using MediatR;
+﻿using System.Collections;
+using MediatR;
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Multimedia;
 using Microsoft.Extensions.Logging;
-using Perform.Model;
+using Perform.Interfaces;
 
 namespace Perform.MidiFootPedal;
 
@@ -116,5 +117,25 @@ public class MidiController : IDevice
     public void Dispose()
     {
         _inputDevice?.Dispose();
+    }
+
+    public IEnumerator<IDeviceItem> GetEnumerator()
+    {
+        throw new NotImplementedException();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    public T Get<T>(string target)
+    {
+        throw new NotImplementedException();
+    }
+
+    public bool Set<T>(string target, T value)
+    {
+        throw new NotImplementedException();
     }
 }

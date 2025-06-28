@@ -8,7 +8,7 @@ namespace Perform.Interfaces;
 
 public interface IDeviceScriptFunction
 {
-    public void Initialize(ShowScript showScript, params string[] devices);
+    public void Initialize(ShowScript showScript, string[] devices);
 
     public void Loop();
 

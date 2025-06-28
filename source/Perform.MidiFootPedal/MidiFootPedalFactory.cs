@@ -2,6 +2,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Perform.Factories;
+using Perform.Interfaces;
 using Perform.Model;
 
 namespace Perform.MidiFootPedal
